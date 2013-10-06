@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+# coffee --nodejs --harmony_proxies ../app.coffee
+node --harmony_proxies ../app.js
