@@ -1,7 +1,5 @@
-BabaScript = require("./babascript")
-
-
-BabaScript.hoge = ()->
-	console.log "hoge func"
-
-BabaScript.hoge()
+mm = require "methodmissing"
+BabaScript = require "./babascript"
+baba = new BabaScript()
+baba.hoge "fuga", ()->
+	console.log "hoge"

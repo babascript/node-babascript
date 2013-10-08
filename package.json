@@ -10,7 +10,9 @@
     "babascript"
   ],
   "dependencies": {
-    "node-proxy": "*"
+    "methodmissing": "*",
+    "node-linda-client": "*",
+    "moment": "~2.3.0"
   },
   "author": "Takumi Baba",
   "license": "MIT"
