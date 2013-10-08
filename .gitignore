@@ -2,3 +2,5 @@ node/
 env/
 list/
 node_modules/
+
+babascript.coffee

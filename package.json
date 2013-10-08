@@ -1,8 +1,12 @@
 {
   "name": "BabaScript",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "BabaScript for node",
-  "main": "app.js",
+  "main": "babascript.js",
+  "repository":{
+    "type": "git",
+    "url": "https://github.com/TakumiBaba/node-babascript"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
