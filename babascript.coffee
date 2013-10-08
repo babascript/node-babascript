@@ -3,6 +3,7 @@ crypto = require "crypto"
 Linda = require("node-linda-client")
 WebsocketClient = require("websocket").client
 moment = require "moment"
+sys = require "sys"
 
 class Baba
 
@@ -15,8 +16,12 @@ class Baba
 		baba = mm @, (key, args)=>
 			@__noSuchMethod key, args
 		return baba
-
-	__noSuchMethod: (key, args)->
+	
+	__noSuchMethod: (key, args)=>
+		return sys.inspect @ if key is "inspect"
+		@humanExec(key, args)
+		
+	humanExec: (key, args)=>
 		throw Error("last args should callback function") if typeof args[args.length-1] isnt 'function'
 		@linda.io.once "connect", =>
 			cid = @callbackId()

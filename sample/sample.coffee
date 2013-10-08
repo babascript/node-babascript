@@ -1,9 +1,7 @@
-BabaScript = require "./babascript"
+BabaScript = require "../babascript"
 
 baba = new BabaScript()
 
-baba.hoge = ->
-	console.log "hoge"
-
-baba.hoge()
-baba.fuga()
+console.log baba
+baba.please_contribute "babascriptForNode", (result)->
+	console.log result

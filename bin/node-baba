@@ -1,4 +1,15 @@
-#!/usr/bin/env bash
+#!/usr/bin/env node
 
-# coffee --nodejs --harmony_proxies ../app.coffee
-node --harmony_proxies ../app.js
+var BabaScript = require("../babascript");
+var baba = new BabaScript();
+
+var methodName = process.argv[2];
+var args = [];
+for(var i=3;i<process.argv.length; i++){
+	args.push(process.argv[i]);
+}
+args.push(function(result){
+	console.log(result[3]);
+	process.exit();
+});
+baba.humanExec(methodName, args);
