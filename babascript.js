@@ -15,14 +15,14 @@
 
   Baba = (function() {
     function Baba(base, space) {
+      this.exit = __bind(this.exit, this);
       this.humanExec = __bind(this.humanExec, this);
       this.__noSuchMethod = __bind(this.__noSuchMethod, this);
       var baba,
         _this = this;
       this.base = base || "linda.masuilab.org:10010";
       this.space = space || "takumibaba";
-      this.linda = new Linda.LindaClient(this.base);
-      this.ts = new Linda.TupleSpace("takumibaba", this.linda);
+      this.linda = new Linda(this.base, this.space);
       baba = mm(this, function(key, args) {
         return _this.__noSuchMethod(key, args);
       });
@@ -41,7 +41,7 @@
       if (typeof args[args.length - 1] !== 'function') {
         throw Error("last args should callback function");
       }
-      this.linda.io.once("connect", function() {
+      return this.linda.once("connect", function() {
         var arg, callback, cid, tuple, _i, _len;
         cid = _this.callbackId();
         tuple = [
@@ -57,16 +57,17 @@
             tuple[3].push(arg);
           }
         }
-        _this.ts.write(tuple);
-        return _this.ts.take(["babascript", "return", cid], function(result, info) {
-          return callback(result);
-        });
+        _this.linda.ts.write(tuple);
+        return _this.linda.ts.take(["babascript", "return", cid], callback);
       });
-      return this.linda.connect();
     };
 
     Baba.prototype.callbackId = function() {
       return crypto.createHash("md5").update("" + (moment().diff(this.linda.time)) + (moment().unix()) + "_" + (Math.random(1000000)), "utf-8").digest("hex");
+    };
+
+    Baba.prototype.exit = function() {
+      return this.linda.io.close();
     };
 
     return Baba;
