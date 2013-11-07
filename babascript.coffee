@@ -1,6 +1,6 @@
 mm = require "methodmissing"
 crypto = require "crypto"
-Linda = require("../linda-client/client")
+Linda = require("node-linda-client")
 moment = require "moment"
 sys = require "sys"
 
