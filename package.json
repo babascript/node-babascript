@@ -1,6 +1,6 @@
 {
   "name": "babascript",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "BabaScript for node",
   "main": "babascript.js",
   "repository":{
