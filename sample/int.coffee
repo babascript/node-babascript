@@ -2,5 +2,5 @@ BabaScript = require "../babascript"
 
 baba = new BabaScript()
 
-baba.進捗どうですか {format: "bool"}, (result)->
+baba.進捗数値的にはどうですか {format: "int"}, (result)->
   console.log result

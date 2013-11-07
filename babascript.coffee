@@ -1,7 +1,6 @@
 mm = require "methodmissing"
 crypto = require "crypto"
-Linda = require("node-linda-client")
-WebsocketClient = require("websocket").client
+Linda = require("../linda-client/client")
 moment = require "moment"
 sys = require "sys"
 
@@ -12,7 +11,6 @@ class Baba
 		@space = space || "takumibaba"
 		@linda = new Linda.LindaClient @base
 		@ts = new Linda.TupleSpace "takumibaba", @linda
-		@client = new WebsocketClient()
 		baba = mm @, (key, args)=>
 			@__noSuchMethod key, args
 		return baba
