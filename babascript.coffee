@@ -7,7 +7,7 @@ sys = require "sys"
 class Baba
 
   constructor: (base, space)->
-    @base = base || "linda.masuilab.org:10010"
+    @base = base || "http://linda.masuilab.org/"
     @space = space || "takumibaba"
     @linda = new Linda @base, @space
     baba = mm @, (key, args)=>
@@ -19,22 +19,46 @@ class Baba
     @humanExec(key, args)
     
   humanExec: (key, args)=>
-    throw Error("last args should callback function") if typeof args[args.length-1] isnt 'function'
-    @linda.once "connect", =>
+    throw Error("last args should be callback function") if typeof args[args.length-1] isnt 'function'
+    @linda.io.once "connect", =>
+      console.log "connect"
       cid = @callbackId()
-      tuple = ["babascript", "eval", key, [], {"callback": cid}]
+      options = {}
       for arg in args
+        if arg["timeout"]
+          arg["timeout"] = moment().add("seconds", arg["timeout"]).format("YYYY-MM-DD HH:mm:ss")
+        if arg["count"]
+          count = arg["count"] - 1
         if typeof arg is 'function'
           callback = arg
         else
-          tuple[3].push arg
+          for k, value of arg
+            options[k] = value
+      tuple = ["babascript", "eval", key, options, {"callback": cid}]
+      console.log tuple
       @linda.ts.write tuple
-      @linda.ts.take ["babascript", "return", cid], callback
+      timeoutFlag = false
+      if tuple[3].timeout?
+        timeoutFlag = true
+        t = Math.ceil(-(moment().diff tuple[3].timeout)/1000)
+        setTimeout ()=>
+          if timeoutFlag
+            @linda.ts.take tuple, =>
+              callback {error: "timeout"}
+        , t*1000
+      @linda.ts.take ["babascript", "return", cid], (_tuple, info)=>
+        timeoutFlag = false
+        if count > 0
+          count--
+          console.log "count: #{count}"
+          @linda.ts.take ["babascript", "return", cid], arguments.callee
+        callback _tuple, info
 
   callbackId: ->
     return crypto.createHash("md5").update("#{moment().diff(@linda.time)}#{moment().unix()}_#{Math.random(1000000)}", "utf-8").digest("hex")
 
   exit: =>
     @linda.io.close()
+
 
 module.exports = Baba

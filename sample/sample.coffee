@@ -1,8 +1,8 @@
 BabaScript = require "../babascript"
+baba = new BabaScript("http://linda.masuilab.org/", "geta6")
 
-baba = new BabaScript()
-baba.進捗どうですか {format: "bool"}, (result, info)->
-  console.log result, info
-  baba.exit()
 
-console.log "hoge"
+r = []
+c = 3
+baba.進捗どうですか {format: "bool"}, (result, info)=>
+  console.log result

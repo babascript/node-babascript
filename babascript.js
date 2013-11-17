@@ -20,7 +20,7 @@
       this.__noSuchMethod = __bind(this.__noSuchMethod, this);
       var baba,
         _this = this;
-      this.base = base || "linda.masuilab.org:10010";
+      this.base = base || "http://linda.masuilab.org/";
       this.space = space || "takumibaba";
       this.linda = new Linda(this.base, this.space);
       baba = mm(this, function(key, args) {
@@ -39,26 +39,60 @@
     Baba.prototype.humanExec = function(key, args) {
       var _this = this;
       if (typeof args[args.length - 1] !== 'function') {
-        throw Error("last args should callback function");
+        throw Error("last args should be callback function");
       }
-      return this.linda.once("connect", function() {
-        var arg, callback, cid, tuple, _i, _len;
+      return this.linda.io.once("connect", function() {
+        var arg, callback, cid, count, k, options, t, timeoutFlag, tuple, value, _i, _len;
+        console.log("connect");
         cid = _this.callbackId();
-        tuple = [
-          "babascript", "eval", key, [], {
-            "callback": cid
-          }
-        ];
+        options = {};
         for (_i = 0, _len = args.length; _i < _len; _i++) {
           arg = args[_i];
+          if (arg["timeout"]) {
+            arg["timeout"] = moment().add("seconds", arg["timeout"]).format("YYYY-MM-DD HH:mm:ss");
+          }
+          if (arg["count"]) {
+            count = arg["count"] - 1;
+          }
           if (typeof arg === 'function') {
             callback = arg;
           } else {
-            tuple[3].push(arg);
+            for (k in arg) {
+              value = arg[k];
+              options[k] = value;
+            }
           }
         }
+        tuple = [
+          "babascript", "eval", key, options, {
+            "callback": cid
+          }
+        ];
+        console.log(tuple);
         _this.linda.ts.write(tuple);
-        return _this.linda.ts.take(["babascript", "return", cid], callback);
+        timeoutFlag = false;
+        if (tuple[3].timeout != null) {
+          timeoutFlag = true;
+          t = Math.ceil(-(moment().diff(tuple[3].timeout)) / 1000);
+          setTimeout(function() {
+            if (timeoutFlag) {
+              return _this.linda.ts.take(tuple, function() {
+                return callback({
+                  error: "timeout"
+                });
+              });
+            }
+          }, t * 1000);
+        }
+        return _this.linda.ts.take(["babascript", "return", cid], function(_tuple, info) {
+          timeoutFlag = false;
+          if (count > 0) {
+            count--;
+            console.log("count: " + count);
+            _this.linda.ts.take(["babascript", "return", cid], arguments.callee);
+          }
+          return callback(_tuple, info);
+        });
       });
     };
 
