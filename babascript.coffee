@@ -6,6 +6,8 @@ sys = require "sys"
 
 class Baba
 
+  resultList: {}
+
   constructor: (base, space)->
     @base = base || "http://linda.masuilab.org/"
     @space = space || "takumibaba"
@@ -24,17 +26,23 @@ class Baba
       console.log "connect"
       cid = @callbackId()
       options = {}
+      order = "eval"
+      @resultList[cid] = []
+      count = 0
       for arg in args
         if arg["timeout"]
           arg["timeout"] = moment().add("seconds", arg["timeout"]).format("YYYY-MM-DD HH:mm:ss")
         if arg["count"]
           count = arg["count"] - 1
+        if arg["broadcast"]
+          order = "broadcast"
+          count = arg["broadcast"] - 1
         if typeof arg is 'function'
           callback = arg
         else
           for k, value of arg
-            options[k] = value
-      tuple = ["babascript", "eval", key, options, {"callback": cid}]
+            options[k] = value      
+      tuple = ["babascript", order, key, options, {"callback": cid}]
       console.log tuple
       @linda.ts.write tuple
       timeoutFlag = false
@@ -43,16 +51,22 @@ class Baba
         t = Math.ceil(-(moment().diff tuple[3].timeout)/1000)
         setTimeout ()=>
           if timeoutFlag
+            @linda.ts.write ["babascript", "cancel", cid]
             @linda.ts.take tuple, =>
               callback {error: "timeout"}
         , t*1000
-      @linda.ts.take ["babascript", "return", cid], (_tuple, info)=>
+      @linda.ts.take ["babascript", "return", cid], (_tuple, info, list)=>
         timeoutFlag = false
         if count > 0
           count--
           console.log "count: #{count}"
+          @resultList[cid].push _tuple
           @linda.ts.take ["babascript", "return", cid], arguments.callee
-        callback _tuple, info
+        else
+          console.log "callback!"
+          @resultList[cid].push _tuple
+          @linda.ts.write ["babascript", "cancel", cid]
+          callback @resultList[cid], info
 
   callbackId: ->
     return crypto.createHash("md5").update("#{moment().diff(@linda.time)}#{moment().unix()}_#{Math.random(1000000)}", "utf-8").digest("hex")

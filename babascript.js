@@ -14,6 +14,8 @@
   sys = require("sys");
 
   Baba = (function() {
+    Baba.prototype.resultList = {};
+
     function Baba(base, space) {
       this.exit = __bind(this.exit, this);
       this.humanExec = __bind(this.humanExec, this);
@@ -42,10 +44,13 @@
         throw Error("last args should be callback function");
       }
       return this.linda.io.once("connect", function() {
-        var arg, callback, cid, count, k, options, t, timeoutFlag, tuple, value, _i, _len;
+        var arg, callback, cid, count, k, options, order, t, timeoutFlag, tuple, value, _i, _len;
         console.log("connect");
         cid = _this.callbackId();
         options = {};
+        order = "eval";
+        _this.resultList[cid] = [];
+        count = 0;
         for (_i = 0, _len = args.length; _i < _len; _i++) {
           arg = args[_i];
           if (arg["timeout"]) {
@@ -53,6 +58,10 @@
           }
           if (arg["count"]) {
             count = arg["count"] - 1;
+          }
+          if (arg["broadcast"]) {
+            order = "broadcast";
+            count = arg["broadcast"] - 1;
           }
           if (typeof arg === 'function') {
             callback = arg;
@@ -64,7 +73,7 @@
           }
         }
         tuple = [
-          "babascript", "eval", key, options, {
+          "babascript", order, key, options, {
             "callback": cid
           }
         ];
@@ -76,6 +85,7 @@
           t = Math.ceil(-(moment().diff(tuple[3].timeout)) / 1000);
           setTimeout(function() {
             if (timeoutFlag) {
+              _this.linda.ts.write(["babascript", "cancel", cid]);
               return _this.linda.ts.take(tuple, function() {
                 return callback({
                   error: "timeout"
@@ -84,14 +94,19 @@
             }
           }, t * 1000);
         }
-        return _this.linda.ts.take(["babascript", "return", cid], function(_tuple, info) {
+        return _this.linda.ts.take(["babascript", "return", cid], function(_tuple, info, list) {
           timeoutFlag = false;
           if (count > 0) {
             count--;
             console.log("count: " + count);
-            _this.linda.ts.take(["babascript", "return", cid], arguments.callee);
+            _this.resultList[cid].push(_tuple);
+            return _this.linda.ts.take(["babascript", "return", cid], arguments.callee);
+          } else {
+            console.log("callback!");
+            _this.resultList[cid].push(_tuple);
+            _this.linda.ts.write(["babascript", "cancel", cid]);
+            return callback(_this.resultList[cid], info);
           }
-          return callback(_tuple, info);
         });
       });
     };
