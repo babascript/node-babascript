@@ -16,15 +16,33 @@
   Baba = (function() {
     Baba.prototype.resultList = {};
 
-    function Baba(base, space) {
-      this.exit = __bind(this.exit, this);
+    Baba.prototype.tasks = [];
+
+    Baba.prototype.connecting = false;
+
+    function Baba(space) {
+      this.workDone = __bind(this.workDone, this);
       this.humanExec = __bind(this.humanExec, this);
       this.__noSuchMethod = __bind(this.__noSuchMethod, this);
       var baba,
         _this = this;
-      this.base = base || "http://linda.masuilab.org/";
+      this.base = "http://linda.masuilab.org";
       this.space = space || "takumibaba";
       this.linda = new Linda(this.base, this.space);
+      this.linda.io.on("connect", function() {
+        var task, _i, _len, _ref, _results;
+        _this.connecting = true;
+        _ref = _this.tasks;
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          task = _ref[_i];
+          _results.push(_this.humanExec(task.key, task.args));
+        }
+        return _results;
+      });
+      this.linda.io.on("disconnect", function() {
+        return _this.connecting = false;
+      });
       baba = mm(this, function(key, args) {
         return _this.__noSuchMethod(key, args);
       });
@@ -35,79 +53,92 @@
       if (key === "inspect") {
         return sys.inspect(this);
       }
-      return this.humanExec(key, args);
+      if (this.connecting) {
+        return this.humanExec(key, args);
+      } else {
+        return this.tasks.push({
+          key: key,
+          args: args
+        });
+      }
     };
 
     Baba.prototype.humanExec = function(key, args) {
-      var _this = this;
+      var arg, callback, cid, count, k, options, order, t, timeoutFlag, tuple, value, _i, _len,
+        _this = this;
       if (typeof args[args.length - 1] !== 'function') {
         throw Error("last args should be callback function");
       }
-      return this.linda.io.once("connect", function() {
-        var arg, callback, cid, count, k, options, order, t, timeoutFlag, tuple, value, _i, _len;
-        console.log("connect");
-        cid = _this.callbackId();
-        options = {};
-        order = "eval";
-        _this.resultList[cid] = [];
-        count = 0;
-        for (_i = 0, _len = args.length; _i < _len; _i++) {
-          arg = args[_i];
-          if (arg["timeout"]) {
-            arg["timeout"] = moment().add("seconds", arg["timeout"]).format("YYYY-MM-DD HH:mm:ss");
-          }
-          if (arg["count"]) {
-            count = arg["count"] - 1;
-          }
-          if (arg["broadcast"]) {
-            order = "broadcast";
-            count = arg["broadcast"] - 1;
-          }
-          if (typeof arg === 'function') {
-            callback = arg;
-          } else {
-            for (k in arg) {
-              value = arg[k];
-              options[k] = value;
-            }
+      cid = this.callbackId();
+      options = {};
+      order = "eval";
+      this.resultList[cid] = [];
+      count = 0;
+      for (_i = 0, _len = args.length; _i < _len; _i++) {
+        arg = args[_i];
+        if (arg["timeout"]) {
+          arg["timeout"] = moment().add("seconds", arg["timeout"]).format("YYYY-MM-DD HH:mm:ss");
+        }
+        if (arg["count"]) {
+          count = arg["count"] - 1;
+        }
+        if (arg["broadcast"]) {
+          order = "broadcast";
+          count = arg["broadcast"] - 1;
+        }
+        if (typeof arg === 'function') {
+          callback = arg;
+        } else {
+          for (k in arg) {
+            value = arg[k];
+            options[k] = value;
           }
         }
-        tuple = [
-          "babascript", order, key, options, {
-            "callback": cid
-          }
-        ];
-        console.log(tuple);
-        _this.linda.ts.write(tuple);
-        timeoutFlag = false;
-        if (tuple[3].timeout != null) {
-          timeoutFlag = true;
-          t = Math.ceil(-(moment().diff(tuple[3].timeout)) / 1000);
-          setTimeout(function() {
-            if (timeoutFlag) {
-              _this.linda.ts.write(["babascript", "cancel", cid]);
-              return _this.linda.ts.take(tuple, function() {
-                return callback({
-                  error: "timeout"
-                });
-              });
-            }
-          }, t * 1000);
+      }
+      tuple = [
+        "babascript", order, key, options, {
+          "callback": cid
         }
-        return _this.linda.ts.take(["babascript", "return", cid], function(_tuple, info, list) {
-          timeoutFlag = false;
-          if (count > 0) {
-            count--;
-            console.log("count: " + count);
-            _this.resultList[cid].push(_tuple);
-            return _this.linda.ts.take(["babascript", "return", cid], arguments.callee);
-          } else {
-            console.log("callback!");
-            _this.resultList[cid].push(_tuple);
+      ];
+      this.linda.ts.write(tuple);
+      timeoutFlag = false;
+      if (tuple[3].timeout != null) {
+        timeoutFlag = true;
+        t = Math.ceil(-(moment().diff(tuple[3].timeout)) / 1000);
+        setTimeout(function() {
+          if (timeoutFlag) {
+            console.log("timeout");
             _this.linda.ts.write(["babascript", "cancel", cid]);
-            return callback(_this.resultList[cid], info);
+            return _this.linda.ts.take(tuple, function() {
+              return callback({
+                error: "timeout"
+              });
+            });
           }
-        });
+        }, t * 1000);
+      }
+      return this.linda.ts.take(["babascript", "return", cid], function(_tuple, info, list) {
+        var r, result, temp, _j, _len1, _ref;
+        timeoutFlag = false;
+        if (count > 0) {
+          count--;
+          _this.resultList[cid].push(_tuple);
+          return _this.linda.ts.take(["babascript", "return", cid], arguments.callee);
+        } else {
+          _this.resultList[cid].push(_tuple);
+          _this.linda.ts.write(["babascript", "cancel", cid]);
+          result = [];
+          _ref = _this.resultList[cid];
+          for (_j = 0, _len1 = _ref.length; _j < _len1; _j++) {
+            r = _ref[_j];
+            result.push(r[3]);
+          }
+          if (result.length === 1) {
+            temp = result[0];
+            result = temp;
+          }
+          return callback(result, info);
+        }
       });
     };
 
@@ -115,8 +146,8 @@
       return crypto.createHash("md5").update("" + (moment().diff(this.linda.time)) + (moment().unix()) + "_" + (Math.random(1000000)), "utf-8").digest("hex");
     };
 
-    Baba.prototype.exit = function() {
-      return this.linda.io.close();
+    Baba.prototype.workDone = function() {
+      return process.exit();
     };
 
     return Baba;
