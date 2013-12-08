@@ -1,5 +1,6 @@
 BabaScript = require "../babascript"
-baba = new BabaScript("takumibaba")
+baba = new BabaScript("baba")
 
 baba.進捗どうですか {format: "string"}, (result)->
   console.log result
+  baba.workDone()

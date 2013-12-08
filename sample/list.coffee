@@ -1,9 +1,6 @@
 BabaScript = require "../babascript"
-baba = new BabaScript("takumibaba")
+baba = new BabaScript("baba")
 yamada = new BabaScript("yamada")
-# baba.進捗どうですか {format: "list", list: ["hoge", "fuga", "sore", "are", "foo", "bar"]}, (result)->
-#   console.log result
-
 #書類整理
 # お金の精算系
 baba.書類の種類はなんですか {format: "list", list:["領収書", "講義資料", "研究費申請書類", "広告", "その他"]}, (type)->
@@ -32,6 +29,3 @@ baba.書類の種類はなんですか {format: "list", list:["領収書", "講�
         console.log "次の書類整理"
     else
       baba.書類のタイトルは何ですか {format: "string"}, (name)->
-        baba."" {}, ()->
-      # baba.山田くんに聞いてください {}, ()->
-      #   console.log "山田くんから教えてもらったら次の書類整理"

@@ -1,5 +1,5 @@
 BabaScript = require "../babascript"
-baba = new BabaScript("takumibaba")
+baba = new BabaScript("baba")
 filling = ()->
   baba.書類の種類はなんですか {format: "list", list:["領収書", "講義資料", "研究費申請書類", "広告", "その他"]}, (type)->
     switch type
@@ -37,8 +37,9 @@ filling = ()->
               nextFilling()
 
 nextFilling = ()=>
+  console.log("next filling")
   baba.まだ未整理の書類はありますか {format: "bool"}, (result)->
-    if result is "true"
+    if result is true
       filling()
     else
       baba.他の仕事をしてください {format: "bool"}, (result)->
