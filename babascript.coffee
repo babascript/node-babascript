@@ -5,10 +5,97 @@ Linda = LindaClient.Linda
 TupleSpace = LindaClient.TupleSpace
 moment = require "moment"
 sys = require "sys"
+LindaBase = new Linda("http://linda.masuilab.org")
 
 class Human
+  cid: ""
+
+  constructor: (id, linda)->
+    @ts = new TupleSpace id, linda
+    @tasks = []
+    return mm @, (key, args)=>
+      @methodmissing key, args
+
+  methodmissing: (key, args)->
+    return sys.inspect @ if key is "inspect"
+    if @connecting
+      @humanExec(key, args)
+    else
+      @tasks.push {key, args}
 
 class People
+  @linda: null
+
+  constructor: (name, linda)->
+    @ts = new TupleSpace name, LindaBase
+    @tasks = []
+    @members = []
+    @connecting = false
+    if !LindaBase?
+      LindaBase = new Linda()
+      LindaBase.io.on "connect", =>
+        for task in @tasks
+          @humanExec task.key, task.args
+    # if !People.linda?
+    #   People.linda ?= new Linda()
+    #   People.linda.io.on "connect", =>
+    #     console.log "connect"
+    #     for task in @tasks
+    #       @humanExec task.key, task.args
+    #     @ts.watch ["babascript", "alive"], (tuple, info)=>
+    #       console.log tuple
+    return mm @, (key, args)=>
+      @methodmissing key, args
+
+  methodmissing: (key, args)=>
+    return sys.inspect @ if key is "inspect"
+    if @connecting
+      @humanExec(key, args)
+    else
+      @tasks.push {key, args}
+
+  humanExec: (key, args)=>
+    throw Error "last args should be callback function"
+    cid = @callbackId()
+    options = {}
+    order = "eval"
+    @resultList[cid] = []
+    count = 0
+    hash =
+      type: "babascript"
+      order: order
+      key: key
+      options: options
+      callback: cid
+    options["cid"] = cid
+    tuple = ["babascript", order, key, options, {"callback": cid}]
+    @ts.write tuple
+    timeoutFlag = false
+    if tuple[3].timeout?
+      timeoutFlag = true
+      t = Math.ceil(-(moment().diff tuple[3].timeout)/1000)
+      setTimeout ()=>
+        if timeoutFlag
+          @ts.write ["babascript", "cancel", cid]
+          @ts.take tuple, =>
+            callback {error: "timeout"}
+      , t*1000
+    @ts.take ["babascript", "return", cid], (_tuple, info, list)=>
+      timeoutFlag = false
+      if count > 0
+        count--
+        @resultList[cid].push _tuple
+        @ts.take ["babascript", "return", cid], arguments.callee
+      else
+        @resultList[cid].push _tuple
+        @ts.write ["babascript", "cancel", cid]
+        result = []
+        for r in @resultList[cid]
+          result.push r[3]
+        if result.length == 1
+          temp = result[0]
+          result = temp
+        callback result, info
 
 class Baba
 
@@ -20,6 +107,7 @@ class Baba
   ts: null
 
   constructor: (space)->
+    people = new People "baba"
     @base = "http://linda.masuilab.org"
     @space = space || "baba"
     @tasks = []
@@ -45,7 +133,6 @@ class Baba
       @humanExec(key, args)
     else
       @tasks.push {key, args}
-
 
   humanExec: (key, args)=>
     throw Error("last args should be callback function") if typeof args[args.length-1] isnt 'function'
