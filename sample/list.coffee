@@ -1,4 +1,4 @@
-BabaScript = require "../babascript"
+BabaScript = require "../lib/babascript"
 baba = new BabaScript("baba")
 yamada = new BabaScript("yamada")
 #書類整理

@@ -1,4 +1,4 @@
-BabaScript = require "../babascript"
+BabaScript = require "../lib/babascript"
 babas = new BabaScript "baba"
 yamada = new BabaScript "yamada"
 # console.log LindBase

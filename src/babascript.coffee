@@ -135,7 +135,8 @@ class Baba
       @tasks.push {key, args}
 
   humanExec: (key, args)=>
-    throw Error("last args should be callback function") if typeof args[args.length-1] isnt 'function'
+    if typeof args[args.length-1] isnt 'function'
+      throw Error("last args should be callback function")
     cid = @callbackId()
     options = {}
     order = "eval"
@@ -149,7 +150,9 @@ class Baba
       callback: cid
     for arg in args
       if arg["timeout"]
-        arg["timeout"] = moment().add("seconds", arg["timeout"]).format("YYYY-MM-DD HH:mm:ss")
+        seconds = arg["timeout"]
+        timeFormat = "YYYY-MM-DD HH:mm:ss"
+        arg["timeout"] = moment().add("seconds", seconds).format(timeFormat)
       if arg["count"]
         count = arg["count"] - 1
       if arg["broadcast"]
@@ -169,7 +172,7 @@ class Baba
     if tuple[3].timeout?
       timeoutFlag = true
       t = Math.ceil(-(moment().diff tuple[3].timeout)/1000)
-      setTimeout ()=>
+      setTimeout =>
         if timeoutFlag
           @ts.write ["babascript", "cancel", cid]
           @ts.take tuple, =>
@@ -193,7 +196,9 @@ class Baba
         callback result, info
 
   callbackId: ->
-    return crypto.createHash("md5").update("#{moment().diff(Baba.linda.time)}#{moment().unix()}_#{Math.random(1000000)}", "utf-8").digest("hex")
+    diff = moment().diff(Baba.linda.time)
+    params = "#{diff}#{moment().unix()}_#{Math.random(1000000)}"
+    return crypto.createHash("md5").update(params, "utf-8").digest("hex")
 
   workDone: =>
     process.exit()

@@ -1,4 +1,4 @@
-BabaScript = require "../babascript"
+BabaScript = require "../lib/babascript"
 baba = new BabaScript("baba")
 
 baba.進捗どうですか {format: "string"}, (result)->

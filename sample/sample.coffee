@@ -1,4 +1,4 @@
-BabaScript = require "../babascript"
+BabaScript = require "../lib/babascript"
 baba = new BabaScript("baba")
 #タイトル・日付をカレンダーに登録→true or false
 # baba.展示説明をする {format: "boolean"}, (result, info)=>
