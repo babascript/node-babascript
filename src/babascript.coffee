@@ -74,7 +74,7 @@ class People
     if tuple[3].timeout?
       timeoutFlag = true
       t = Math.ceil(-(moment().diff tuple[3].timeout)/1000)
-      setTimeout ()=>
+      setTimeout =>
         if timeoutFlag
           @ts.write ["babascript", "cancel", cid]
           @ts.take tuple, =>
