@@ -1,6 +1,5 @@
 node/
 env/
 list/
-node_modules/
-
-babascript.coffee
+node_modules
+.DS_Store

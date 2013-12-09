@@ -1,6 +1,7 @@
-BabaScript = require "../babascript"
+BabaScript = require "../lib/babascript"
 babas = new BabaScript "baba"
 yamada = new BabaScript "yamada"
+# console.log LindBase
 
 babas.たまご買ってきてください {format: "bool", broadcast: 1}, (result, info)->
   console.log result
