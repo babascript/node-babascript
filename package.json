@@ -3,7 +3,7 @@
   "version": "0.1.4",
   "description": "BabaScript for node",
   "main": "./lib/babascript.js",
-  "repository":{
+  "repository": {
     "type": "git",
     "url": "https://github.com/TakumiBaba/node-babascript"
   },
@@ -25,7 +25,8 @@
   "dependencies": {
     "methodmissing": "*",
     "node-linda-client": "*",
-    "moment": "~2.3.0"
+    "moment": "~2.3.0",
+    "underscore": "~1.5.2"
   },
   "author": "Takumi Baba",
   "license": "MIT"
