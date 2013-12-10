@@ -41,7 +41,7 @@ class Person extends EventEmitter
     if typeof args[args.length - 1] isnt "function"
       throw new Error "last args should be callback function"
     cid = callbackId()
-    options = {}
+    options = {"cid": cid}
     order = "eval"
     @resultList[cid] = []
     count = 0
@@ -51,15 +51,18 @@ class Person extends EventEmitter
           count = v - 1
           order = "broadcast"
         when "unicast"
-          order = "unicast"
-          console.log "broadcast"
+          if @members?
+            worker = _.find @members, (m)=>
+              return m.id().toString() is v
+            if worker?
+              worker.humanExec key, args
+              return
         when "format"
           options["format"] = v
         when "timeout"
           timeFormat = "YYYY-MM-DD HH:mm:ss"
           options["timeout"] = moment().add("seconds", v).format(timeFormat)
     callback = args[1]
-    options["cid"] = cid
     tuple = ["babascript", order, key, options, {callback: cid}]
     console.log tuple
     console.log @ts
@@ -69,6 +72,7 @@ class Person extends EventEmitter
     @on "#{cid}_recall", =>
       @ts.take ["babascript", "return", cid], @returnTake
     @emit "#{cid}_recall"
+
 
   returnTake: (tuple, info)=>
     console.log tuple
