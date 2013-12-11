@@ -1,15 +1,18 @@
-BabaScript = require "../lib/babascript"
+{BabaScript} = require "../lib/babascript"
 babas = new BabaScript "baba"
 yamada = new BabaScript "yamada"
 # console.log LindBase
 
-babas.たまご買ってきてください {format: "bool", broadcast: 1}, (result, info)->
-  console.log result
-  console.log info
-  yamada.ほげふが (result, info)->
-    console.log result, info
+babas.たまご買ってきてください {format: "bool", broadcast: 1}, (result)->
+  console.log "result---"
+  console.log result.value
+  worker = result.worker
+  console.log worker
+  worker.いえい {}, (result)->
+    console.log result
+  yamada.ほげふが {}, (result)->
+    console.log result
     console.log "いえーい"
-    yamada.workDone()
   # yamada.てすとてすと {format: "bool"}, ->
   #   console.log "いえーい"
   # babas.晩御飯はどれが良いですか {format: "list", broadcast: 1, list: ["オムライス", "たまごかけご飯", ""]}, (r)->
