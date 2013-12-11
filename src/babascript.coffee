@@ -29,9 +29,7 @@ class Person extends EventEmitter
       @humanExec task.key, task.args
 
   methodmissing: (key, args)->
-    console.log key, args
     return sys.inspect @ if key is "inspect"
-    console.log LindaBase.isConnecting()
     if LindaBase.isConnecting()
       @humanExec(key, args)
     else
@@ -64,8 +62,6 @@ class Person extends EventEmitter
           options["timeout"] = moment().add("seconds", v).format(timeFormat)
     callback = args[1]
     tuple = ["babascript", order, key, options, {callback: cid}]
-    console.log tuple
-    console.log @ts
     @ts.write tuple
     @count[cid] = count
     @once "#{cid}_callback", callback
@@ -326,6 +322,7 @@ class Persons extends Person
 #         callback result, info
 
 module.exports =
+  BabaScript: Persons
   # BabaScript: Baba
   Person: Person
   Persons: Persons
