@@ -4,7 +4,7 @@
 
 ## initialize
     
-    BabaScript = require "./lib/babascript"
+    {BabaScript} = require "./lib/babascript"
     baba = new BabaScript "baba"
 
 ## baba.methodName(args={}, callback)
@@ -40,12 +40,22 @@
       console.log result
 
 ## callback(result, human(people?))
+
+* 返り値: result.value 
+* 返した人: result.worker(Person Object)
+* result.worker.methodName で、返した人にまた命令を送れる
   
-  どっちがいいかな？
-    baba.進捗どうですか {}, (result, human)->
-      human.具体的に進捗どうですか {}, (result)
-
-  or
-
     baba.進捗どうですか {}, (result)->
-      console.log result.data, result.human
+      value = result.value
+      worker = result.worker
+      console.log value, worker
+      if value
+        worker.進捗もっと {}, (result)->
+          console.log result.value
+      else
+        worker.なんで進捗ないんですか {format: "string"}, (result)->
+          console.log result.value
+
+
+
+
