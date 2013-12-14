@@ -1,4 +1,4 @@
-BabaScript = require "../lib/babascript"
+{BabaScript} = require "../lib/babascript"
 baba = new BabaScript("baba")
 filling = ()->
   baba.書類の種類はなんですか {format: "list", list:["領収書", "講義資料", "研究費申請書類", "広告", "その他"]}, (type)->
