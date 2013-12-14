@@ -56,15 +56,15 @@
         worker.なんで進捗ないんですか {format: "string"}, (result)->
           console.log result.value
 
-
-#TODO
 ## baba.methodName({unicast: id}, callback)
 
 * unicastオプションは、特定の一人に対して命令を配信する。
 * id で指定された相手から命令が返ってきたらcallbackが実行される
+* 現状の id はとてもダサいので、変更したい
 
-    baba.進捗どうですか {unicast: "yamada"}, (result)->
+    baba.進捗どうですか {unicast: "13864372209500.3487349874339998"}, (result)->
       value = result.value
       worker = result.worker #worker is yamada
       worker.やまだくんやまだくん
-    
+
+
