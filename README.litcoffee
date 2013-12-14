@@ -4,7 +4,7 @@
 
 ## initialize
     
-    {BabaScript} = require "./lib/babascript"
+    {BabaScript} = require "babascript"
     baba = new BabaScript "baba"
 
 ## baba.methodName(args={}, callback)
@@ -12,7 +12,7 @@
 * methodName 部分が命令としてワーカーに通知される
 * 第一引数に命令に関するオプション、第二引数にコールバック関数を指定する
  
-    baba.進捗どうですか (result)->
+    baba.進捗どうですか {}, (result)->
       console.log result
 
 ## baba.methodName({format: "boolean"}, callback)
@@ -34,7 +34,7 @@
 ## baba.methodName({broadcast: num}, callback)
 
 * broadcast は、全babaに対して命令を送る
-* numで指定された数だけ値が返ってくるまで待つ
+* numで指定された数だけ値が返ってきたらcallbackが実行される
 
     baba.進捗どうですか {broadcast: 3}, (result)->
       console.log result
@@ -57,5 +57,14 @@
           console.log result.value
 
 
+#TODO
+## baba.methodName({unicast: id}, callback)
 
+* unicastオプションは、特定の一人に対して命令を配信する。
+* id で指定された相手から命令が返ってきたらcallbackが実行される
 
+    baba.進捗どうですか {unicast: "yamada"}, (result)->
+      value = result.value
+      worker = result.worker #worker is yamada
+      worker.やまだくんやまだくん
+    
