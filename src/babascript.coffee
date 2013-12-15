@@ -1,7 +1,6 @@
 mm = require "methodmissing"
 {EventEmitter} = require "events"
 crypto = require "crypto"
-# LindaClient = require "node-linda-client"
 LindaClient = require "../../linda-client/lib/client"
 Linda = LindaClient.Linda
 TupleSpace = LindaClient.TupleSpace
@@ -60,7 +59,9 @@ class Person extends EventEmitter
         when "timeout"
           timeFormat = "YYYY-MM-DD HH:mm:ss"
           options["timeout"] = moment().add("seconds", v).format(timeFormat)
-    callback = args[1]
+        else
+          options[k] = v
+    callback = args[args.length - 1]
     tuple = ["babascript", order, key, options, {callback: cid}]
     @ts.write tuple
     @count[cid] = count
