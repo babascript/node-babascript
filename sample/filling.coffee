@@ -26,7 +26,8 @@ filling = ()->
         baba.捨ててください {}, (result)->
           nextFilling()
       else
-        baba.書類のタイトルは何ですか {format: "string"}, (name)->
+        baba.書類のタイトルは何ですか {format: "string"}, (result)->
+          name = result.value
           if name.match(/未踏/)?
             baba.机の上にわかりやすく配置しておいてください {}, ()->
               nextFilling()
