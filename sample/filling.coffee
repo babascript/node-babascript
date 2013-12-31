@@ -1,19 +1,19 @@
 {BabaScript} = require "../lib/babascript"
-baba = new BabaScript("baba")
+baba = new BabaScript("bababa")
 filling = ()->
-  baba.書類の種類はなんですか {format: "list", list:["領収書", "講義資料", "研究費申請書類", "広告", "その他"]}, (type)->
-    switch type
+  baba.書類の種類はなんですか {format: "list", list:["領収書", "講義資料", "研究費申請書類", "広告", "その他"]}, (result)->
+    switch result.value
       when "領収書"
-        baba.書類棚のA番の領収書ファイルに入れておいてください {}, (result)->
+        baba.書類棚のA番の領収書ファイルに入れておいてください {format: "boolean"}, (result)->
           nextFilling()
       when "講義資料"
         baba.書類棚のC番に積んでおいてください {}, (result)->
           nextFilling()
       when "研究費申請書類"
         baba.締切は1ヶ月以内ですか {}, (result)->
-          if result is "true"
-            baba.あと何日ですか {format: "int"}, (i)->
-              if i < 10
+          if result.value is true
+            baba.あと何日ですか {format: "int"}, (result)->
+              if result.value < 10
                 baba.至急連絡してください ()->
                   nextFilling()
               else
@@ -40,10 +40,10 @@ filling = ()->
 nextFilling = ()=>
   console.log("next filling")
   baba.まだ未整理の書類はありますか {format: "bool"}, (result)->
-    if result is true
+    if result.value is true
       filling()
     else
       baba.他の仕事をしてください {format: "bool"}, (result)->
-        baba.workDone()
+        process.exit()
 
 filling()

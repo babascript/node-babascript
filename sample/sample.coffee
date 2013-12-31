@@ -1,4 +1,4 @@
-BabaScript = require "../lib/babascript"
+{BabaScript} = require "../lib/babascript"
 baba = new BabaScript("baba")
 #タイトル・日付をカレンダーに登録→true or false
 # baba.展示説明をする {format: "boolean"}, (result, info)=>
@@ -22,4 +22,13 @@ baba.進捗どうですか {format: "boolean"}, (result, info)->
     baba.もう一度進捗はどうなんですか {format: "boolean"}, (result, info)->
       console.log "そうですか"
       baba.workDone()
+
+
+#teachers = new BabaScript("takumibaba")
+#teachers.このレポートの点数は何点ですか {format: "int"}, (result)->
+#  point = result.value
+#  if point < 30
+#    return "単位不認定"
+#  else
+#    return "単位認定"
 
