@@ -61,6 +61,8 @@ class Person extends EventEmitter
           options["timeout"] = moment().add("seconds", v).format(timeFormat)
         else
           options[k] = v
+    if !options["format"]?
+      options["format"] = "boolean"
     callback = args[args.length - 1]
     tuple = ["babascript", order, key, options, {callback: cid}]
     @ts.write tuple
@@ -72,9 +74,8 @@ class Person extends EventEmitter
 
 
   returnTake: (tuple, info)=>
-    console.log tuple
     cid = tuple[2]
-    @resultList[cid].push {value: tuple[3], person: @}
+    @resultList[cid].push {value: tuple[3], worker: @}
     if @count[cid] > 0
       @count[cid]
       @emit "#{cid}_recall"
@@ -85,7 +86,7 @@ class Person extends EventEmitter
         result.push r
       if result.length is 1
         result = result[0]
-      @emit "#{cid}_callback", {result, info}
+      @emit "#{cid}_callback", result, info
 
   callbackId = ->
     diff = moment().diff(LindaBase.time)
@@ -112,7 +113,6 @@ class Persons extends Person
         @members.push person
 
   returnTake: (tuple, info)=>
-    console.log tuple
     cid = tuple[2]
     worker = _.find @members, (member)=>
       return member.id().toString() is tuple[4].worker.toString()
