@@ -48,12 +48,13 @@ module.exports = (grunt) ->
         reporter: 'spec'
         compilers: 'coffee:coffee-script'
         ignoreLeaks: no
+        timeout: 10000
       dist:
-        src: [ 'tests/test.coffee' ]
+        src: [ 'tests/test.coffee', "tests/testclient.coffee" ]
 
     watch:
       options:
         interrupt: yes
       dist:
-        files: [ 'src/**/*.coffee' ]
+        files: [ 'src/**/*.coffee', 'tests/*.coffee' ]
         tasks: [ 'test' ]
