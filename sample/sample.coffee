@@ -1,34 +1,39 @@
-{BabaScript} = require "../lib/babascript"
-baba = new BabaScript("baba")
-#タイトル・日付をカレンダーに登録→true or false
-# baba.展示説明をする {format: "boolean"}, (result, info)=>
-#   console.log result
-#   if result == "true"
-#     console.log "説明ご苦労さまです"
+LindaClient = require "../../linda-client/lib/client"
+_ = require "underscore"
+Linda = LindaClient.Linda
+TupleSpace = LindaClient.TupleSpace
+
+Baba = require "../lib/main"
+
+# client = new Baba.Client "baba", ()->
+#   @returnValue "hogefuga"
+baba = new Baba.Script.Persons "baba"
+# baba.ほげふが {format: "boolean"}, ->
+#   console.log "いえーい"
+#   baba.あれそれ {format: "boolean"}, ->
+#     console.log "いえーい"
+
+console.log "hoge"
+num = 90
+clients = []
+for i in [0..100]
+  clients.push new Baba.Client "baba", ->
+    @returnValue true
+console.log "fuga"
+baba.ほげふが {format: "boolean", broadcast: num}, (result)->
+  console.log result.length
+
+
+
+
+# {BabaScript} = require "../lib/script"
+# baba = new BabaScript("baba")
+# baba.進捗どうですか {format: "boolean"}, (result, info)->
+#   if result is true
+#     console.log "良い進捗ですね"
 #   else
-#     baba.必ず説明してくれ {format:"boolean"}, (result,info)->
-#       if result is "true"
-#         console.log "ありがとうございます"
-#       else
-#         console.log "人の行動をプログラムに埋め込むことができる人力処理環境です。"
-#         console.log "人への命令構文を追加可能なライブラリと、その命令を受け取り、値を返すことのできるアプリケーションを組み合わせることで実現します"
-#         console.log "プログラム側から人へ働きかけられることによって、人を実世界とのインタフェースとして扱ったり、人を効率的に運用することが可能になります"
-
-baba.進捗どうですか {format: "boolean"}, (result, info)->
-  if result is true
-    console.log "良い進捗ですね"
-  else
-    console.log "進捗ダメです"
-    baba.もう一度進捗はどうなんですか {format: "boolean"}, (result, info)->
-      console.log "そうですか"
-      baba.workDone()
-
-
-#teachers = new BabaScript("takumibaba")
-#teachers.このレポートの点数は何点ですか {format: "int"}, (result)->
-#  point = result.value
-#  if point < 30
-#    return "単位不認定"
-#  else
-#    return "単位認定"
+#     console.log "進捗ダメです"
+#     baba.もう一度進捗はどうなんですか {format: "boolean"}, (result, info)->
+#       console.log "そうですか"
+#       baba.workDone()
 
