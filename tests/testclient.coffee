@@ -12,11 +12,38 @@ describe "client test", ->
     assert.notEqual baba, null
     done()
 
+  it "baba constructor's arguments[length-1,2] is function", (done)->
+    space = "baba_constructor_event"
+    baba = new Baba.Script.Persons space
+    client = new Baba.Client space, (result)->
+      @returnValue true
+    , ()->
+      console.log "cancel"
+      done()
+    baba.引数最後二つはコールバック関数でも良い {format: "boolean"}, (result)->
+      done()
+
+
+  it "baba should implement callback event", (done)->
+    space = "baba_add_event"
+    baba = new Baba.Script.Persons space
+    client = new Baba.Client space
+    client.on "get_task", (task)->
+      @returnValue true
+    client.on "cancel_task", (task)->
+      console.log "cancel_task"
+    baba.くらいあんとにこーるばっくいべんと {format: "boolean"}, (result)->
+      done()
+
+
   it "return value should be boolean", (done)->
     space = "baba_boolean"
     baba = new Baba.Script.Persons space
-    client = new Baba.Client space, ->
+    client = new Baba.Client space
+    client.on "get_task", ->
       @returnValue true
+    client.on "cancel_task", ->
+      console.log cancel
     baba.ぶーりあんをください {format: "boolean"}, (result)->
       assert.equal result.value, true
       assert.equal typeof result.value, typeof true
@@ -96,9 +123,6 @@ describe "client test", ->
         done()
     , 1000
 
-  it "unicast task", (done)->
-    # TODO そのうち書く
-    done()
     
   it "single result.worker", (done)->
 

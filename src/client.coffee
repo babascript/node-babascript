@@ -1,10 +1,11 @@
+{EventEmitter} = require "events"
 LindaClient = require "../../linda-client/lib/client"
 TupleSpace = LindaClient.TupleSpace
 Linda = LindaClient.Linda
 
-class Client
+class Client extends EventEmitter
 
-  constructor: (name, @callback)->
+  constructor: (name, callbackFunc, cancelFunc)->
     @linda = new Linda "http://localhost:5000"
     @tasks = []
     @id = @getId()
@@ -15,28 +16,30 @@ class Client
       @broadcast()
       @unicast()
       @watchAliveCheck()
+    @on "get_task", callbackFunc if typeof callbackFunc is "function"
+    @on "cancel_task", cancelFunc if typeof cancelFunc is "function"
 
   next: ->
     if @tasks.length > 0
       task = @tasks[0]
       format = task.format
-      @callback.call @, task
+      @emit "get_task", tuple
     else
       @group.take {baba: "script", type: "eval"}, (tuple, info)=>
         @tasks.push tuple
-        @callback.call @, tuple if @tasks.length > 0
+        @emit "get_task", tuple if @tasks.length > 0
 
   unicast: ->
     @uni.watch {baba: "script", type: "eval"}, (tuple, info)=>
       tuple.unicast = true
       @tasks.push tuple
-      @callback.call @, tuple if @tasks.length > 0
+      @emit "get_task", tuple if @tasks.length > 0
 
   broadcast: ->
     t = {baba: "script", type: "broadcast"}
     @group.watch t, (tuple, info)=>
       @tasks.push tuple
-      @callback.call @, tuple if @tasks.length > 0
+      @emit "get_task", tuple if @tasks.length > 0
 
   watchCancel: (callback)->
     @group.watch {baba: "script", type: "cancel"}, (tuple, info)->
@@ -45,7 +48,7 @@ class Client
       if cancelTasks?
         for task in cancelTasks
           if task is @tasks[0]
-            # ここで、Viewを元に戻すとかしたい...
+            @emit "cancel_task", task
             @next()
           @tasks.remove task
 
