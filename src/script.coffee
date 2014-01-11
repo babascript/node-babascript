@@ -10,11 +10,12 @@ Linda = LindaClient.Linda
 TupleSpace = LindaClient.TupleSpace
 LindaBase = null
 
-class Person extends EventEmitter
+class Script extends EventEmitter
   cid: ""
 
   constructor: (@id)->
-    LindaBase ?= new Linda "http://linda.masuilab.org"
+    LindaBase ?= new Linda "http://localhost:5000"
+    @members = new Members()
     @ts = new TupleSpace @id, LindaBase
     @tasks = []
     @resultList = {}
@@ -25,6 +26,19 @@ class Person extends EventEmitter
       @methodmissing key, args
 
   connect: =>
+    @ts.write
+      baba: "script"
+      type: "aliveCheck"
+    t =
+      baba: "script"
+      alive: true
+    @ts.watch t, (tuple, info)=>
+      flag = false
+      for member in @members.getAll
+        if member.id().toString() is tuple.id.toString()
+          flag = true
+      if !flag
+        @members.add new Member tuple.id, @
     for task in @tasks
       @humanExec task.key, task.args
 
@@ -40,39 +54,13 @@ class Person extends EventEmitter
       throw new Error "last args should be callback function"
     cid = callbackId()
     @resultList[cid] = []
-    count = 0
-    tuple =
-      baba: "script"
-      type: "eval"
-      key: key
-      cid: cid
-      format: "boolean"
-    for k, v of args[0]
-      switch k
-        when "broadcast"
-          count = v - 1
-          tuple.type = "broadcast"
-        when "unicast"
-          if @members?
-            worker = _.find @members, (m)=>
-              return m.id().toString() is v
-            if worker?
-              worker.humanExec key, args
-              return
-        when "format"
-          tuple.format = v
-        when "timeout"
-          timeFormat = "YYYY-MM-DD HH:mm:ss"
-          timeout = moment().add("seconds", v).format(timeFormat)
-          format.timeout = timeout
-        else
-          tuple[k] = v
+    tuple = @createTupleWithOption key, cid, args[0]
     callback = args[args.length - 1]
     @once "#{cid}_callback", callback
     @ts.write tuple
     if tuple.type is "broadcast"
       h = []
-      for i in [0..count]
+      for i in [0..tuple.count]
         h.push (callback)=>
           @addResult(cid, callback)
       async.parallel h, (err, results)=>
@@ -83,27 +71,160 @@ class Person extends EventEmitter
       @waitReturn cid, (tuple, info)=>
         @emit "#{cid}_callback", tuple, info
 
+  createTupleWithOption: (key, cid, option)->
+    tuple =
+      baba: "script"
+      type: option.type || "eval"
+      key: key
+      cid: option.cid || cid
+      format: option.format || "boolean"
+    return tuple if typeof option is "function"
+    for k, v of option
+      switch k
+        when "broadcast"
+          tuple.count = v - 1
+          tuple.type = "broadcast"
+        when "unicast"
+          tuple.type = "unicast"
+          tuple.unicast = v
+        when "timeout"
+          timeFormat = "YYYY-MM-DD HH:mm:ss"
+          timeout = moment().add("seconds", v).format(timeFormat)
+          tuple.timeout = timeout
+        else
+          tuple[k] = v
+    return tuple
+
   cancel: (cid)->
     @ts.write {baba: "script", type: "cancel", cid: cid}
 
   waitReturn: (cid, callback)->
     @ts.take {baba: "script", type: "return", cid: cid}, (tuple, info)=>
-      if !@members
-        result = {value: tuple.value, worker: tuple.worker}
-      else
-        worker = @members.getOrAdd tuple.worker
-        result = {value: tuple.value, worker: worker}
+      worker = @createWorker tuple.worker
+      result = {value: tuple.value, worker: worker}
       callback.call @, result, info
 
   addResult: (cid, callback)=>
     @waitReturn cid, (r)=>
-      worker = @members.getOrAdd r.worker.id()
-      callback null, {value: r.value, worker: worker}
+      callback null, r
+
+  createWorker: (worker)->
+    return mm @, (key, args)=>
+      if typeof args[0] is 'function'
+        args[1] = args[0]
+        args[0] = {}
+      args[0].unicast = worker
+      @methodmissing key, args
     
   callbackId = ->
     diff = moment().diff(LindaBase.time)
     params = "#{diff}#{moment().unix()}_#{Math.random(1000000)}"
     return crypto.createHash("md5").update(params, "utf-8").digest("hex")
+
+
+class Person extends EventEmitter
+
+  constructor: (@id, @script)->
+    return mm @, (key, args)=>
+      args.unicast = @id
+      script.humanExec key, args
+
+# class Person extends EventEmitter
+#   cid: ""
+
+#   constructor: (@id)->
+#     LindaBase ?= new Linda "http://localhost:5000"
+#     @ts = new TupleSpace @id, LindaBase
+#     @tasks = []
+#     @resultList = {}
+#     @count = {}
+#     if !LindaBase.io.connecting
+#       LindaBase.io.once "connect", @connect
+#     return mm @, (key, args)=>
+#       @methodmissing key, args
+
+#   connect: =>
+#     for task in @tasks
+#       @humanExec task.key, task.args
+
+#   methodmissing: (key, args)->
+#     return sys.inspect @ if key is "inspect"
+#     if LindaBase.isConnecting()
+#       @humanExec(key, args)
+#     else
+#       @tasks.push {key, args}
+
+#   humanExec: (key, args)->
+#     if typeof args[args.length - 1] isnt "function"
+#       throw new Error "last args should be callback function"
+#     cid = callbackId()
+#     @resultList[cid] = []
+#     count = 0
+#     tuple =
+#       baba: "script"
+#       type: "eval"
+#       key: key
+#       cid: cid
+#       format: "boolean"
+#     for k, v of args[0]
+#       switch k
+#         when "broadcast"
+#           count = v - 1
+#           tuple.type = "broadcast"
+#         when "unicast"
+#           if @members?
+#             worker = _.find @members, (m)=>
+#               return m.id().toString() is v
+#             if worker?
+#               tuple.type = "unicast"
+#               tuple.unicast = worker.id()
+#               # worker.humanExec key, args
+#               return
+#         when "format"
+#           tuple.format = v
+#         when "timeout"
+#           timeFormat = "YYYY-MM-DD HH:mm:ss"
+#           timeout = moment().add("seconds", v).format(timeFormat)
+#           format.timeout = timeout
+#         else
+#           tuple[k] = v
+#     callback = args[args.length - 1]
+#     @once "#{cid}_callback", callback
+#     @ts.write tuple
+#     if tuple.type is "broadcast"
+#       h = []
+#       for i in [0..count]
+#         h.push (callback)=>
+#           @addResult(cid, callback)
+#       async.parallel h, (err, results)=>
+#         throw err if err
+#         @cancel cid
+#         @emit "#{cid}_callback", results
+#     else
+#       @waitReturn cid, (tuple, info)=>
+#         @emit "#{cid}_callback", tuple, info
+
+#   cancel: (cid)->
+#     @ts.write {baba: "script", type: "cancel", cid: cid}
+
+#   waitReturn: (cid, callback)->
+#     @ts.take {baba: "script", type: "return", cid: cid}, (tuple, info)=>
+#       if !@members
+#         result = {value: tuple.value, worker: tuple.worker}
+#       else
+#         worker = @members.getOrAdd tuple.worker
+#         result = {value: tuple.value, worker: worker}
+#       callback.call @, result, info
+
+#   addResult: (cid, callback)=>
+#     @waitReturn cid, (r)=>
+#       worker = @members.getOrAdd r.worker.id()
+#       callback null, {value: r.value, worker: worker}
+    
+#   callbackId = ->
+#     diff = moment().diff(LindaBase.time)
+#     params = "#{diff}#{moment().unix()}_#{Math.random(1000000)}"
+#     return crypto.createHash("md5").update(params, "utf-8").digest("hex")
 
 class Members
 
@@ -132,28 +253,28 @@ class Members
   length: ->
     return @members.length
 
-class Persons extends Person
+# class Persons extends Person
 
-  constructor: (@name)->
-    self = super @name
-    @members = new Members()
-    return self
+#   constructor: (@name)->
+#     self = super @name
+#     @members = new Members()
+#     return self
 
-  connect: =>
-    super()
-    @ts.write
-      baba: "script"
-      type: "aliveCheck"
-    t =
-      baba: "script"
-      alive: true
-    @ts.watch t, (tuple, info)=>
-      flag = false
-      for member in @members.getAll
-        if member.id().toString() is tuple.id.toString()
-          flag = true
-      if !flag
-        @members.add tuple.id
+#   connect: =>
+#     super()
+#     @ts.write
+#       baba: "script"
+#       type: "aliveCheck"
+#     t =
+#       baba: "script"
+#       alive: true
+#     @ts.watch t, (tuple, info)=>
+#       flag = false
+#       for member in @members.getAll
+#         if member.id().toString() is tuple.id.toString()
+#           flag = true
+#       if !flag
+#         @members.add tuple.id
 
   # returnTake: (tuple, info)=>
   #   console.log "Persons::returnTake"
@@ -177,7 +298,7 @@ class Persons extends Person
   #     @emit "#{cid}_callback", result, info
 
 
-module.exports =
-  Persons: Persons
-  Person: Person
-  Members: Members
+module.exports = Script
+  # Persons: Persons
+  # Person: Person
+  # Members: Members

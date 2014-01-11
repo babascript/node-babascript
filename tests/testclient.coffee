@@ -8,14 +8,14 @@ readline = require "readline"
 
 describe "client test", ->
 
-  it "baba should not be null", (done)->
-    baba = new Baba.Script.Persons "baba"
+  it "hoge", (done)->
+    baba = new Baba.Script "baba"
     assert.notEqual baba, null
     done()
 
   it "baba constructor's arguments[length-1,2] is function", (done)->
     space = "baba_constructor_event"
-    baba = new Baba.Script.Persons space
+    baba = new Baba.Script space
     client = new Baba.Client space, (result)->
       @returnValue true
     , ()->
@@ -24,10 +24,9 @@ describe "client test", ->
     baba.引数最後二つはコールバック関数でも良い {format: "boolean"}, (result)->
       done()
 
-
   it "baba should implement callback event", (done)->
     space = "baba_add_event"
-    baba = new Baba.Script.Persons space
+    baba = new Baba.Script space
     client = new Baba.Client space
     client.on "get_task", (task)->
       @returnValue true
@@ -39,7 +38,7 @@ describe "client test", ->
 
   it "create client", (done)->
     space = "baba_create_client"
-    baba = new Baba.Script.Persons space
+    baba = new Baba.Script space
     client = Baba.createClient(space)
     .on "get_task", ->
       @returnValue true
@@ -50,7 +49,7 @@ describe "client test", ->
 
   it "return value should be boolean", (done)->
     space = "baba_boolean"
-    baba = new Baba.Script.Persons space
+    baba = new Baba.Script space
     client = new Baba.Client space
     client.on "get_task", ->
 
@@ -64,7 +63,7 @@ describe "client test", ->
 
   it "should multiple task", (done)->
     space = "baba_multiple"
-    baba = new Baba.Script.Persons space
+    baba = new Baba.Script space
     client = new Baba.Client space, (result)->
       @returnValue true
     baba.いっこめ {format: "boolean"}, (r)->
@@ -79,7 +78,7 @@ describe "client test", ->
 
   it "sequential return value", (done)->
     space = "baba_seq"
-    baba = new Baba.Script.Persons space
+    baba = new Baba.Script space
     count = 0
     ids = []
     clients = []
@@ -102,7 +101,7 @@ describe "client test", ->
   it "return value should be string", (done)->
     space = "baba_string"
     name = "baba"
-    baba = new Baba.Script.Persons space
+    baba = new Baba.Script space
     hoge = new Baba.Client space, ->
       @returnValue name
     baba.すとりんぐをください {format: "string"}, (result)->
@@ -113,7 +112,7 @@ describe "client test", ->
   it "return value should be number", (done)->
     space = "baba_number"
     number = 10
-    baba = new Baba.Script.Persons space
+    baba = new Baba.Script space
     client = new Baba.Client space, ->
       @returnValue number
     baba.なんばーをください {format: "number"}, (result)->
@@ -125,7 +124,7 @@ describe "client test", ->
     space = "baba_broadcast"
     num = 3
     clients = []
-    baba = new Baba.Script.Persons space
+    baba = new Baba.Script space
     for i in [0..num-1]
       c = new Baba.Client space, (result)->
         @returnValue true
@@ -139,8 +138,8 @@ describe "client test", ->
   it "single result.worker", (done)->
 
     space = "baba_result_worker"
-    baba = new Baba.Script.Persons space
-    client = new Baba.Client space, ->
+    baba = new Baba.Script space
+    client = new Baba.Client space, (tuple)->
       @returnValue true
     baba.りざるとどっとわーかー {format: "boolean"}, (result)->
       assert.notEqual result.worker, null
@@ -152,39 +151,56 @@ describe "client test", ->
     space = "baba_multi_result_worker"
     num = 3
     clients = []
-    baba = new Baba.Script.Persons space
+    baba = new Baba.Script space
     for i in [0..num-1]
       clients.push new Baba.Client space, ->
         @returnValue true
     setTimeout =>
-      baba.りざるとどっとわーかー {format: "boolean", broadcast: num}, (result)->
+      baba.まるちなりざるとどっとわーかー {format: "boolean", broadcast: num}, (result)->
         r = _.sample result
         id = r.worker.id()
         r.worker.てすと {format: "boolean"}, (result)->
-          assert.equal result.worker, id
+          assert.equal result.worker.id(), id
           done()
     , 1000
 
-  it "add", (done)->
-    members = new Baba.Script.Members()
-    assert.equal members.length(), 0
-    members.add "add_takumibaba"
-    assert.equal members.length(), 1
-    done()
+  # it "multi player", (done)->
+    space_baba = "baba_multi_player_baba"
+    space_yamada = "baba_multi_player_yamada"
+    baba = new Baba.Script space_baba
+    yamada = new Baba.Script space_yamada
 
-  it "getMember", (done)->
-    members = new Baba.Script.Members()
-    name = "get_takumibaba"
-    members.add name
-    member = members.get name
-    assert.equal member.id(), name
-    done()
+    client_baba = Baba.createClient(space_baba).on "get_task", ->
+      @returnValue "baba"
+    client_yamada = Baba.createClient(space_yamada).on "get_task", ->
+      @returnValue "yamada"
 
-  it "length", (done)->
-    members = new Baba.Script.Members()
-    num = 10
-    assert.equal members.length(), 0
-    for i in [0..num-1]
-      members.add Math.random()*100
-    assert.equal members.length(), num
-    done()
+    baba.ばばさん (result)=>
+      assert.equal result.value, "baba"
+      yamada.やまだくん (result)=>
+        assert.equal result.value, "yamada"
+        done()
+
+  # it "add", (done)->
+  #   members = new Baba.Script.Members()
+  #   assert.equal members.length(), 0
+  #   members.add "add_takumibaba"
+  #   assert.equal members.length(), 1
+  #   done()
+
+  # it "getMember", (done)->
+  #   members = new Baba.Script.Members()
+  #   name = "get_takumibaba"
+  #   members.add name
+  #   member = members.get name
+  #   assert.equal member.id(), name
+  #   done()
+
+  # it "length", (done)->
+  #   members = new Baba.Script.Members()
+  #   num = 10
+  #   assert.equal members.length(), 0
+  #   for i in [0..num-1]
+  #     members.add Math.random()*100
+  #   assert.equal members.length(), num
+  #   done()

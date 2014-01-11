@@ -6,7 +6,7 @@ Linda = LindaClient.Linda
 class Client extends EventEmitter
 
   constructor: (name, callbackFunc, cancelFunc)->
-    @linda = new Linda "http://linda.masuilab.org/"
+    @linda = new Linda "http://localhost:5000"
     @tasks = []
     @id = @getId()
     @linda.io.once "connect", =>
@@ -31,10 +31,14 @@ class Client extends EventEmitter
         @emit "get_task", tuple if @tasks.length > 0
 
   unicast: ->
-    @uni.watch {baba: "script", type: "eval"}, (tuple, info)=>
-      tuple.unicast = true
+    t = {baba: "script", type: "unicast", unicast: @id}
+    @group.watch t, (tuple, info)=>
       @tasks.push tuple
       @emit "get_task", tuple if @tasks.length > 0
+    # @uni.watch {baba: "script", type: "eval"}, (tuple, info)=>
+    #   tuple.unicast = true
+    #   @tasks.push tuple
+    #   @emit "get_task", tuple if @tasks.length > 0
 
   broadcast: ->
     t = {baba: "script", type: "broadcast"}
@@ -55,7 +59,8 @@ class Client extends EventEmitter
 
   returnValue: (value, options={})->
     task = @tasks[0]
-    ts = if task.unicast is true then @uni else @group
+    ts = @group
+    # ts = if task.unicast is true then @uni else @group
     tuple =
       baba: "script"
       type: "return"
