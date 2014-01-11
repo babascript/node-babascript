@@ -14,7 +14,7 @@ class Person extends EventEmitter
   cid: ""
 
   constructor: (@id)->
-    LindaBase ?= new Linda "http://localhost:5000"
+    LindaBase ?= new Linda "http://linda.masuilab.org"
     @ts = new TupleSpace @id, LindaBase
     @tasks = []
     @resultList = {}

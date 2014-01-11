@@ -4,6 +4,7 @@ path = require "path"
 assert = require "assert"
 Baba = require "../lib/main"
 _    = require "underscore"
+readline = require "readline"
 
 describe "client test", ->
 
@@ -33,14 +34,26 @@ describe "client test", ->
     client.on "cancel_task", (task)->
       console.log "cancel_task"
     baba.くらいあんとにこーるばっくいべんと {format: "boolean"}, (result)->
+      assert.equal result.value, true
       done()
 
+  it "create client", (done)->
+    space = "baba_create_client"
+    baba = new Baba.Script.Persons space
+    client = Baba.createClient(space)
+    .on "get_task", ->
+      @returnValue true
+    .on "cancel_task", ->
+      done()
+    baba.くりえーとくらいあんと (result)->
+      done()
 
   it "return value should be boolean", (done)->
     space = "baba_boolean"
     baba = new Baba.Script.Persons space
     client = new Baba.Client space
     client.on "get_task", ->
+
       @returnValue true
     client.on "cancel_task", ->
       console.log cancel
@@ -122,7 +135,6 @@ describe "client test", ->
         assert.equal num, result.length
         done()
     , 1000
-
     
   it "single result.worker", (done)->
 

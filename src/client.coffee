@@ -6,7 +6,7 @@ Linda = LindaClient.Linda
 class Client extends EventEmitter
 
   constructor: (name, callbackFunc, cancelFunc)->
-    @linda = new Linda "http://localhost:5000"
+    @linda = new Linda "http://linda.masuilab.org/"
     @tasks = []
     @id = @getId()
     @linda.io.once "connect", =>
@@ -18,6 +18,7 @@ class Client extends EventEmitter
       @watchAliveCheck()
     @on "get_task", callbackFunc if typeof callbackFunc is "function"
     @on "cancel_task", cancelFunc if typeof cancelFunc is "function"
+    return @
 
   next: ->
     if @tasks.length > 0
