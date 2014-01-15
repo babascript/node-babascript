@@ -26,7 +26,8 @@
     "methodmissing": "*",
     "node-linda-client": "*",
     "moment": "~2.3.0",
-    "underscore": "~1.5.2"
+    "underscore": "~1.5.2",
+    "parse": "*"
   },
   "author": "Takumi Baba",
   "license": "MIT"

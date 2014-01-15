@@ -1,6 +1,7 @@
-{BabaScript} = require "../../lib/babascript"
+# {BabaScript} = require "../../lib/babascript"
+Baba = require "../../lib/main"
 _ = require "underscore"
-mitohMembers = new BabaScript "mitoh"
+mitohMembers = new Baba.Script "mitoh"
 
 lunch = ["和食", "洋食", "中華", "その他"]
 mitohMembers.昼食何が良いですか {format: "list", list: lunch, broadcast: 4}, (results)->
@@ -14,6 +15,7 @@ mitohMembers.昼食何が良いですか {format: "list", list: lunch, broadcast
   winners = _.max r, (d)->
     return d.length
   manager = _.sample winners
+  console.log manager
   manager.予約してください {format: "boolean"}, (result)=>
     if result.value is true
       console.log "終わり"

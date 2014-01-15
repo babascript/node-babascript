@@ -1,7 +1,9 @@
-{BabaScript} = require "../lib/babascript"
-babas  = new BabaScript "baba"
-yamada = new BabaScript "yamada"
-mitohMembers = new BabaScript "mitoh"
+# {BabaScript} = require "../lib/babascript"
+Baba = require "../lib/main"
+babas  = new Baba.Script "baba"
+yamada = new Baba.Script "yamada"
+mitohMembers = new Baba.Script "mitoh"
+_ = require "underscore"
 
 lunch = ["和食", "洋食", "中華", "その他"]
 babas.昼食何が良いですか {format: "list", list: lunch, broadcast: 5}, (results)->

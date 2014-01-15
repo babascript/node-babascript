@@ -6,6 +6,9 @@ moment = require "moment"
 sys = require "sys"
 _ = require "underscore"
 async = require "async"
+Client = require "./client"
+{Parse} = require "parse"
+
 Linda = LindaClient.Linda
 TupleSpace = LindaClient.TupleSpace
 LindaBase = null
@@ -15,30 +18,83 @@ class Script extends EventEmitter
 
   constructor: (@id)->
     LindaBase ?= new Linda "http://localhost:5000"
-    @members = new Members()
+    @vms = []
+    @isInitialized = false
+    # @members = new Members()
     @ts = new TupleSpace @id, LindaBase
     @tasks = []
     @resultList = {}
     @count = {}
+    console.log LindaBase.isConnecting()
     if !LindaBase.io.connecting
       LindaBase.io.once "connect", @connect
+    else
+      @connect()
     return mm @, (key, args)=>
       @methodmissing key, args
 
   connect: =>
-    @ts.write
-      baba: "script"
-      type: "aliveCheck"
-    t =
-      baba: "script"
-      alive: true
-    @ts.watch t, (tuple, info)=>
-      flag = false
-      for member in @members.getAll
-        if member.id().toString() is tuple.id.toString()
-          flag = true
-      if !flag
-        @members.add new Member tuple.id, @
+    APPID = "pyvshzjKW4PjrGsnyzFigtWk9AQYtSO1FpQ1U2jX"
+    JSKEY = "snbc64DVUJOSgQ3hs91hqwAaKgTfBjkSRFg8suOG"
+    Parse.initialize APPID, JSKEY
+    query = new Parse.Query "masuilab"
+    query.find
+      success: _.bind (list)=>
+        @isInitialized = true
+        arg =
+          channels: ["masuilab"]
+          data:
+            action: "org.babascript.android.UPDATE_STATUS"
+            msg: "ping"
+        callback =
+          success: ->
+          error: ->
+        Parse.Push.send arg, callback
+        @_connect()
+        @ts.write
+          baba: "script"
+          type: "aliveCheck"
+        t =
+          baba: "script"
+          type: "alive"
+          alive: true
+        @ts.watch t, (tuple, info)=>
+          v = _.filter @vms, (vm)=>
+            return vm.id is tuple.id
+          v = null
+      error: (err)->
+        @isInitialized = true
+        @_connect()
+
+        # Parse.Push.send {
+        #   channels: ["masuilab"]
+        #   data: {
+        #     hoge: "Fuga"
+        #   }
+        # }, {
+        #   success: ->
+        #     console.log "success"
+        #   error: ->
+        #     console.log arguments
+        # }
+    # @ts.write
+    #   baba: "script"
+    #   type: "aliveCheck"
+    # t =
+    #   baba: "script"
+    #   type: "alive"
+    #   alive: true
+    # @ts.watch t, (tuple, info)=>
+      # flag = false
+      # for member in @members.getAll
+      #   if member.id().toString() is tuple.id.toString()
+      #     flag = true
+      # if !flag
+      #   @members.add tuple.id
+    # for task in @tasks
+    #   @humanExec task.key, task.args
+
+  _connect: ->
     for task in @tasks
       @humanExec task.key, task.args
 
@@ -122,12 +178,12 @@ class Script extends EventEmitter
     return crypto.createHash("md5").update(params, "utf-8").digest("hex")
 
 
-class Person extends EventEmitter
+# class Person extends EventEmitter
 
-  constructor: (@id, @script)->
-    return mm @, (key, args)=>
-      args.unicast = @id
-      script.humanExec key, args
+#   constructor: (@id, @script)->
+#     return mm @, (key, args)=>
+#       args.unicast = @id
+#       script.humanExec key, args
 
 # class Person extends EventEmitter
 #   cid: ""
