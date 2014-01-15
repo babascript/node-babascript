@@ -35,10 +35,6 @@ class Client extends EventEmitter
     @group.watch t, (tuple, info)=>
       @tasks.push tuple
       @emit "get_task", tuple if @tasks.length > 0
-    # @uni.watch {baba: "script", type: "eval"}, (tuple, info)=>
-    #   tuple.unicast = true
-    #   @tasks.push tuple
-    #   @emit "get_task", tuple if @tasks.length > 0
 
   broadcast: ->
     t = {baba: "script", type: "broadcast"}
@@ -59,8 +55,6 @@ class Client extends EventEmitter
 
   returnValue: (value, options={})->
     task = @tasks[0]
-    ts = @group
-    # ts = if task.unicast is true then @uni else @group
     tuple =
       baba: "script"
       type: "return"
@@ -68,7 +62,7 @@ class Client extends EventEmitter
       cid: task.cid
       worker: @id
       options: options
-    ts.write tuple
+    @group.write tuple
     @tasks.shift()
     @next()
 
