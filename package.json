@@ -27,7 +27,9 @@
     "node-linda-client": "*",
     "moment": "~2.3.0",
     "underscore": "~1.5.2",
-    "parse": "*"
+    "parse": "*",
+    "linda-socket.io": "~0.1.5",
+    "socket.io-client": "~0.9.16"
   },
   "author": "Takumi Baba",
   "license": "MIT"

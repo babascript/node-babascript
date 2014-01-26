@@ -1,7 +1,10 @@
 mm = require "methodmissing"
-{EventEmitter} = require "events"
+# {EventEmitter} = require "events"
+EventEmitter = require("EventEmitter2").EventEmitter2
 crypto = require "crypto"
 LindaClient = require "../../linda-client/lib/client"
+LindaSocketIOClient = require("linda-socket.io").Client
+SocketIOClient = require "socket.io-client"
 moment = require "moment"
 sys = require "sys"
 _ = require "underscore"
@@ -15,56 +18,54 @@ LindaBase = null
 
 class Script extends EventEmitter
   cid: ""
+  @socket: null
+  @linda: null
 
   constructor: (@id)->
-    LindaBase ?= new Linda "http://localhost:5000"
-    @vms = []
-    @isInitialized = false
-    # @members = new Members()
-    @ts = new TupleSpace @id, LindaBase
+    socket = SocketIOClient.connect("http://node-linda-base.herokuapp.com/")
+    @linda ?= new LindaSocketIOClient().connect socket
+    @sts = @linda.tuplespace @id
     @tasks = []
-    @resultList = {}
-    @count = {}
-    console.log LindaBase.isConnecting()
-    if !LindaBase.io.connecting
-      LindaBase.io.once "connect", @connect
+    if @linda.io.socket.connecting?
+      @linda.io.on "connect", @connect()
     else
       @connect()
     return mm @, (key, args)=>
       @methodmissing key, args
 
   connect: =>
-    APPID = "pyvshzjKW4PjrGsnyzFigtWk9AQYtSO1FpQ1U2jX"
-    JSKEY = "snbc64DVUJOSgQ3hs91hqwAaKgTfBjkSRFg8suOG"
-    Parse.initialize APPID, JSKEY
-    query = new Parse.Query "masuilab"
-    query.find
-      success: _.bind (list)=>
-        @isInitialized = true
-        arg =
-          channels: ["masuilab"]
-          data:
-            action: "org.babascript.android.UPDATE_STATUS"
-            msg: "ping"
-        callback =
-          success: ->
-          error: ->
-        Parse.Push.send arg, callback
-        @_connect()
-        @ts.write
-          baba: "script"
-          type: "aliveCheck"
-        t =
-          baba: "script"
-          type: "alive"
-          alive: true
-        @ts.watch t, (tuple, info)=>
-          v = _.filter @vms, (vm)=>
-            return vm.id is tuple.id
-          v = null
-      error: (err)->
-        @isInitialized = true
-        @_connect()
+    @_connect()
+    # APPID = "pyvshzjKW4PjrGsnyzFigtWk9AQYtSO1FpQ1U2jX"
+    # JSKEY = "snbc64DVUJOSgQ3hs91hqwAaKgTfBjkSRFg8suOG"
+    # Parse.initialize APPID, JSKEY
+    # query = new Parse.Query "masuilab"
+    # query.find
+    #   success: _.bind (list)=>
+    #     @isInitialized = true
+    #     arg =
+    #       channels: ["masuilab"]
+    #       data:
+    #         action: "org.babascript.android.UPDATE_STATUS"
+    #         msg: "ping"
+    #     callback =
+    #       success: ->
+    #       error: ->
+    #     Parse.Push.send arg, callback
+    #     @_connect()
+    #     @sts.write
+    #       baba: "script"
+    #       type: "aliveCheck"
+    #     t =
+    #       baba: "script"
+    #       type: "alive"
+    #       alive: true
+    #     @sts.watch t, (tuple, info)=>
+    #       v = _.filter @vms, (vm)=>
+    #         return vm.id is tuple.id
+    #       v = null
+    #   error: (err)->
+    #     @isInitialized = true
+    #     @_connect()
 
         # Parse.Push.send {
         #   channels: ["masuilab"]
@@ -95,12 +96,13 @@ class Script extends EventEmitter
     #   @humanExec task.key, task.args
 
   _connect: ->
-    for task in @tasks
-      @humanExec task.key, task.args
+    if @tasks.length > 0
+      for task in @tasks
+        @humanExec task.key, task.args
 
   methodmissing: (key, args)->
     return sys.inspect @ if key is "inspect"
-    if LindaBase.isConnecting()
+    if @linda.io.socket.connecting?
       @humanExec(key, args)
     else
       @tasks.push {key, args}
@@ -109,11 +111,10 @@ class Script extends EventEmitter
     if typeof args[args.length - 1] isnt "function"
       throw new Error "last args should be callback function"
     cid = callbackId()
-    @resultList[cid] = []
     tuple = @createTupleWithOption key, cid, args[0]
     callback = args[args.length - 1]
     @once "#{cid}_callback", callback
-    @ts.write tuple
+    @sts.write tuple
     if tuple.type is "broadcast"
       h = []
       for i in [0..tuple.count]
@@ -124,8 +125,8 @@ class Script extends EventEmitter
         @cancel cid
         @emit "#{cid}_callback", results
     else
-      @waitReturn cid, (tuple, info)=>
-        @emit "#{cid}_callback", tuple, info
+      @waitReturn cid, (tuple)=>
+        @emit "#{cid}_callback", tuple
 
   createTupleWithOption: (key, cid, option)->
     tuple =
@@ -152,13 +153,14 @@ class Script extends EventEmitter
     return tuple
 
   cancel: (cid)->
-    @ts.write {baba: "script", type: "cancel", cid: cid}
+    @sts.write {baba: "script", type: "cancel", cid: cid}
 
   waitReturn: (cid, callback)->
-    @ts.take {baba: "script", type: "return", cid: cid}, (tuple, info)=>
-      worker = @createWorker tuple.worker
-      result = {value: tuple.value, worker: worker}
-      callback.call @, result, info
+    @sts.take {baba: "script", type: "return", cid: cid}, (err, tuple)=>
+      console.log tuple
+      worker = @createWorker tuple.data.worker
+      result = {value: tuple.data.value, worker: worker}
+      callback.call @, result
 
   addResult: (cid, callback)=>
     @waitReturn cid, (r)=>
@@ -173,8 +175,7 @@ class Script extends EventEmitter
       @methodmissing key, args
     
   callbackId = ->
-    diff = moment().diff(LindaBase.time)
-    params = "#{diff}#{moment().unix()}_#{Math.random(1000000)}"
+    params = "#{moment().unix()}_#{Math.random(1000000)}"
     return crypto.createHash("md5").update(params, "utf-8").digest("hex")
 
 
