@@ -9,7 +9,7 @@ Linda = LindaClient.Linda
 class Client extends EventEmitter
 
   constructor: (@name, callbackFunc, cancelFunc)->
-    socket = SocketIOClient.connect("http://localhost:5000/")
+    socket = SocketIOClient.connect("http://linda.babascript.org/")
     @linda = new LindaSocketIOClient().connect socket
     @tasks = []
     @id = @getId()
