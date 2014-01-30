@@ -1,7 +1,5 @@
 mm = require "methodmissing"
-# {EventEmitter} = require "events"
 EventEmitter = require("EventEmitter2").EventEmitter2
-crypto = require "crypto"
 LindaClient = require "../../linda-client/lib/client"
 LindaSocketIOClient = require("linda-socket.io").Client
 SocketIOClient = require "socket.io-client"
@@ -27,7 +25,7 @@ class Script extends EventEmitter
     @sts = @linda.tuplespace @id
     @tasks = []
     if @linda.io.socket.connecting?
-      @linda.io.once "connect", @connect()
+      @linda.io.once "connect", @connect
     else
       @connect()
     return mm @, (key, args)=>
@@ -175,7 +173,6 @@ class Script extends EventEmitter
       @methodmissing key, args
     
   callbackId = ->
-    params = "#{moment().unix()}_#{Math.random(1000000)}"
-    return crypto.createHash("md5").update(params, "utf-8").digest("hex")
+    return "#{moment().unix()}_#{Math.random(1000000)}"
 
 module.exports = Script

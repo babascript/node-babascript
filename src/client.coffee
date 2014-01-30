@@ -1,25 +1,22 @@
-# {EventEmitter} = require "events"
 EventEmitter = require("EventEmitter2").EventEmitter2
-LindaClient = require "../../linda-client/lib/client"
 LindaSocketIOClient = require("linda-socket.io").Client
 SocketIOClient = require "socket.io-client"
-TupleSpace = LindaClient.TupleSpace
-Linda = LindaClient.Linda
 
 class Client extends EventEmitter
 
   constructor: (@name, callbackFunc, cancelFunc)->
-    socket = SocketIOClient.connect("http://linda.babascript.org/")
+    options =
+      'force new connection': true
+    socket = SocketIOClient.connect("http://linda.babascript.org/", options)
     @linda = new LindaSocketIOClient().connect socket
     @tasks = []
     @id = @getId()
     if socket.socket.connecting?
       @connect()
     else
-      @linda.io.on "connect", @connect
+      @linda.io.once "connect", @connect
     @on "get_task", callbackFunc if typeof callbackFunc is "function"
     @on "cancel_task", cancelFunc if typeof cancelFunc is "function"
-    return @
 
   connect: ->
     @group = @linda.tuplespace @name
