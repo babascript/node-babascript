@@ -8,7 +8,7 @@ readline = require "readline"
 
 describe "client test", ->
 
-  it "hoge", (done)->
+  it "valid initialize", (done)->
     baba = new Baba.Script "baba"
     assert.notEqual baba, null
     done()
@@ -16,11 +16,11 @@ describe "client test", ->
   it "baba constructor's arguments[length-1,2] is function", (done)->
     space = "baba_constructor_event"
     baba = new Baba.Script space
-    client = new Baba.Client space, (result)->
+    client = new Baba.Client space
+    client.on "get_task", (result)->
       @returnValue true
-    , ()->
-      console.log "cancel"
-      done()
+    client.on "cancel_task", (task)->
+      console.log "task"
     baba.引数最後二つはコールバック関数でも良い {format: "boolean"}, (result)->
       done()
 
@@ -52,7 +52,6 @@ describe "client test", ->
     baba = new Baba.Script space
     client = new Baba.Client space
     client.on "get_task", ->
-
       @returnValue true
     client.on "cancel_task", ->
       console.log cancel
@@ -64,7 +63,8 @@ describe "client test", ->
   it "should multiple task", (done)->
     space = "baba_multiple"
     baba = new Baba.Script space
-    client = new Baba.Client space, (result)->
+    client = new Baba.Client space
+    client.on "get_task", (result)->
       @returnValue true
     baba.いっこめ {format: "boolean"}, (r)->
       assert.equal r.value , true
@@ -77,13 +77,14 @@ describe "client test", ->
             done()
 
   it "sequential return value", (done)->
-    space = "baba_seq"
+    space = "user/baba/seq"
     baba = new Baba.Script space
     count = 0
     ids = []
     clients = []
     for i in [0..9]
-      client = new Baba.Client space, (result)->
+      client = new Baba.Client space
+      client.on "get_task", (result)->
         @returnValue true
       clients.push client
     baba.しーくえんしゃる {format: "boolean"}, (result)->
@@ -102,7 +103,8 @@ describe "client test", ->
     space = "baba_string"
     name = "baba"
     baba = new Baba.Script space
-    hoge = new Baba.Client space, ->
+    hoge = new Baba.Client space
+    hoge.on "get_task", ->
       @returnValue name
     baba.すとりんぐをください {format: "string"}, (result)->
       assert.equal result.value, name
@@ -113,7 +115,8 @@ describe "client test", ->
     space = "baba_number"
     number = 10
     baba = new Baba.Script space
-    client = new Baba.Client space, ->
+    client = new Baba.Client space
+    client.on "get_task", ->
       @returnValue number
     baba.なんばーをください {format: "number"}, (result)->
       assert.equal result.value, number
@@ -126,20 +129,27 @@ describe "client test", ->
     clients = []
     baba = new Baba.Script space
     for i in [0..num-1]
-      c = new Baba.Client space, (result)->
+      c = new Baba.Client space
+      c.on "get_task", (result)->
+        console.log "ぶろーどきゃすと get task"
+        console.log @
         @returnValue true
       clients.push c
     setTimeout =>
+      console.log "num is #{num}"
       baba.ぶろーどきゃすと {format: "boolean", broadcast: num}, (result)->
+        console.log "ぶろーどきゃすと"
+        console.log result
         assert.equal num, result.length
         done()
-    , 1000
+    , 3000
     
   it "single result.worker", (done)->
 
     space = "baba_result_worker"
     baba = new Baba.Script space
-    client = new Baba.Client space, (tuple)->
+    client = new Baba.Client space
+    client.on "get_task", (tuple)->
       @returnValue true
     baba.りざるとどっとわーかー {format: "boolean"}, (result)->
       assert.notEqual result.worker, null
@@ -152,15 +162,18 @@ describe "client test", ->
     num = 3
     clients = []
     baba = new Baba.Script space
-    for i in [0..num-1]
-      clients.push new Baba.Client space, ->
+    for i in [0..num]
+      clients.push (new Baba.Client space).on("get_task", ->
         @returnValue true
+      )
+        
     setTimeout =>
       baba.まるちなりざるとどっとわーかー {format: "boolean", broadcast: num}, (result)->
         r = _.sample result
-        id = r.worker.id()
-        r.worker.てすと {format: "boolean"}, (result)->
-          assert.equal result.worker.id(), id
+        id = r.worker.id
+        r.worker.てすと {format: "boolean"}
+        r.worker.on "get_task", (result)->
+          assert.equal result.worker.id, id
           done()
     , 1000
 
@@ -180,27 +193,3 @@ describe "client test", ->
       yamada.やまだくん (result)=>
         assert.equal result.value, "yamada"
         done()
-
-  # it "add", (done)->
-  #   members = new Baba.Script.Members()
-  #   assert.equal members.length(), 0
-  #   members.add "add_takumibaba"
-  #   assert.equal members.length(), 1
-  #   done()
-
-  # it "getMember", (done)->
-  #   members = new Baba.Script.Members()
-  #   name = "get_takumibaba"
-  #   members.add name
-  #   member = members.get name
-  #   assert.equal member.id(), name
-  #   done()
-
-  # it "length", (done)->
-  #   members = new Baba.Script.Members()
-  #   num = 10
-  #   assert.equal members.length(), 0
-  #   for i in [0..num-1]
-  #     members.add Math.random()*100
-  #   assert.equal members.length(), num
-  #   done()

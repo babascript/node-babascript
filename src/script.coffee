@@ -18,6 +18,7 @@ class Script extends EventEmitter
   cid: ""
   @socket: null
   @linda: null
+  @vc: null
 
   constructor: (@id)->
     socket = SocketIOClient.connect("http://linda.babascript.org/")
@@ -33,8 +34,6 @@ class Script extends EventEmitter
 
   connect: =>
     @_connect()
-    # APPID = "pyvshzjKW4PjrGsnyzFigtWk9AQYtSO1FpQ1U2jX"
-    # JSKEY = "snbc64DVUJOSgQ3hs91hqwAaKgTfBjkSRFg8suOG"
     # Parse.initialize APPID, JSKEY
     # query = new Parse.Query "masuilab"
     # query.find
@@ -131,7 +130,7 @@ class Script extends EventEmitter
       baba: "script"
       type: option.type || "eval"
       key: key
-      cid: option.cid || cid
+      cid: cid || option.cid
       format: option.format || "boolean"
     return tuple if typeof option is "function"
     for k, v of option
@@ -155,7 +154,6 @@ class Script extends EventEmitter
 
   waitReturn: (cid, callback)->
     @sts.take {baba: "script", type: "return", cid: cid}, (err, tuple)=>
-      console.log tuple
       worker = @createWorker tuple.data.worker
       result = {value: tuple.data.value, worker: worker}
       callback.call @, result

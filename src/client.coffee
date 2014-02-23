@@ -4,7 +4,7 @@ SocketIOClient = require "socket.io-client"
 
 class Client extends EventEmitter
 
-  constructor: (@name, callbackFunc, cancelFunc)->
+  constructor: (@name)->
     options =
       'force new connection': true
     socket = SocketIOClient.connect("http://linda.babascript.org/", options)
@@ -15,8 +15,7 @@ class Client extends EventEmitter
       @connect()
     else
       @linda.io.once "connect", @connect
-    @on "get_task", callbackFunc if typeof callbackFunc is "function"
-    @on "cancel_task", cancelFunc if typeof cancelFunc is "function"
+    return @
 
   connect: ->
     @group = @linda.tuplespace @name
@@ -44,6 +43,7 @@ class Client extends EventEmitter
 
   broadcast: ->
     t = {baba: "script", type: "broadcast"}
+    # 一度、readしてデータを取得する？
     @group.watch t, (err, tuple)=>
       @tasks.push tuple
       @emit "get_task", tuple if @tasks.length > 0

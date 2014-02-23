@@ -4,8 +4,8 @@
 
 ## initialize
     
-    {BabaScript} = require "babascript"
-    baba = new BabaScript "baba"
+    {Baba} = require "babascript"
+    baba = new Baba.Script "baba"
 
 ## baba.methodName(args={}, callback)
  
@@ -73,3 +73,39 @@
 * unicastオプションは、特定の一人に対して命令を配信する。
 * id で指定された相手から命令が返ってきたらcallbackが実行される
 * 現状の id はとてもダサいので、変更したい
+
+# BabaScript Client
+
+* BabaScript Client は、BabaScriptからの命令を受け取るためのクライアントです。
+
+## initialize
+
+    {Baba} = require "babascript"
+    client = new Baba.Client "name"
+
+## client.on "get_task", callback
+
+    client.on "get_task", (result)->
+      # タスクを受け取った時の処理を記述する
+
+* client に get_task という名前でコールバックを登録する
+* client が script からの命令を受け取ると、登録されているメソッドが実行される。
+
+## client.returnValue(value)
+
+    client.returnValue true
+
+* returnValue メソッドを用いることで、script側に命令を返すことができる。
+* 現在実行中のタスクの返り値
+
+## client.on "cancel_task", callback
+
+    client.on "cancel_task", (task)->
+      # タスクがキャンセルされた時の処理を記述する
+
+* script 側の事情で命令がキャンセルされた時、このメソッドが呼ばれる。
+
+#VirtualBaba
+
+* モバイルクライアントなどへの命令送信を可能にする仮想クライアント
+* データベースに問い合わせ、そこから返ってくる文字列をidとして、Clientを作る
