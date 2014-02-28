@@ -1,5 +1,6 @@
-{BabaScript} = require "../../lib/babascript"
-baba = new BabaScript("agent")
+Baba = require "../../lib/main"
+
+baba = new Baba.Script "takumibaba"
 docs = ["領収書", "講義資料", "研究費申請書類", "広告", "その他"]
 filling = ()->
   baba.書類の種類はなんですか {format: "list", list: docs}, (result)->
