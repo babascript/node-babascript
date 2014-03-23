@@ -8,7 +8,7 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-simple-mocha'
   grunt.loadNpmTasks 'grunt-notify'
 
-  grunt.registerTask 'test',    [ 'coffeelint', 'coffee', 'simplemocha' ]
+  grunt.registerTask 'test',    [ 'coffeelint', 'coffee']
   grunt.registerTask 'default', [ 'coffeelint', 'coffee', 'simplemocha', 'watch' ]
   grunt.registerTask "debug", ["coffeelint", "coffee", "watch"]
 

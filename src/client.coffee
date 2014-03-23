@@ -7,7 +7,8 @@ class Client extends EventEmitter
   constructor: (@name)->
     options =
       'force new connection': true
-    socket = SocketIOClient.connect("http://linda.babascript.org/", options)
+    # socket = SocketIOClient.connect("http://linda.babascript.org/", options)
+    socket = SocketIOClient.connect("http://localhost:3000", options)
     @linda = new LindaSocketIOClient().connect socket
     @tasks = []
     @id = @getId()
@@ -38,19 +39,19 @@ class Client extends EventEmitter
   unicast: ->
     t = {baba: "script", type: "unicast", unicast: @id}
     @group.watch t, (err, tuple)=>
-      @tasks.push tuple
-      @emit "get_task", tuple if @tasks.length > 0
+      @tasks.push tuple.data
+      @emit "get_task", tuple.data if @tasks.length > 0
 
   broadcast: ->
     t = {baba: "script", type: "broadcast"}
     # 一度、readしてデータを取得する？
     @group.watch t, (err, tuple)=>
-      @tasks.push tuple
-      @emit "get_task", tuple if @tasks.length > 0
+      @tasks.push tuple.data
+      @emit "get_task", tuple.data if @tasks.length > 0
 
   watchCancel: (callback)->
     @group.watch {baba: "script", type: "cancel"}, (err, tple)->
-      console.log "cancel"
+      # console.log "cancel"
       cancelTasks = _.where @tasks, {cid: tuple.cid}
       if cancelTasks?
         for task in cancelTasks
@@ -68,6 +69,8 @@ class Client extends EventEmitter
       cid: task.cid
       worker: @id
       options: options
+      name: @group.name
+      _task: task
     @group.write tuple
     @tasks.shift()
     @next()

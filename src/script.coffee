@@ -7,7 +7,10 @@ moment = require "moment"
 sys = require "sys"
 _ = require "underscore"
 async = require "async"
+sync = require "synchronize"
 Client = require "./client"
+Manager = require "./manager"
+VirtualClient = require "./virtualbaba"
 {Parse} = require "parse"
 
 Linda = LindaClient.Linda
@@ -19,9 +22,16 @@ class Script extends EventEmitter
   @socket: null
   @linda: null
   @vc: null
+  @isProcessing: false
+  @defaultFormat: "boolean"
 
-  constructor: (@id)->
-    socket = SocketIOClient.connect("http://linda.babascript.org/")
+  constructor: (_id)->
+    # socket = SocketIOClient.connect("http://linda.babascript.org/")
+    socket = SocketIOClient.connect("http://localhost:3000")
+    if _id instanceof Manager
+      @id = _id.groupName
+    else
+      @id = _id
     @linda ?= new LindaSocketIOClient().connect socket
     @sts = @linda.tuplespace @id
     @tasks = []
@@ -33,85 +43,41 @@ class Script extends EventEmitter
       @methodmissing key, args
 
   connect: =>
-    @_connect()
-    # Parse.initialize APPID, JSKEY
-    # query = new Parse.Query "masuilab"
-    # query.find
-    #   success: _.bind (list)=>
-    #     @isInitialized = true
-    #     arg =
-    #       channels: ["masuilab"]
-    #       data:
-    #         action: "org.babascript.android.UPDATE_STATUS"
-    #         msg: "ping"
-    #     callback =
-    #       success: ->
-    #       error: ->
-    #     Parse.Push.send arg, callback
-    #     @_connect()
-    #     @sts.write
-    #       baba: "script"
-    #       type: "aliveCheck"
-    #     t =
-    #       baba: "script"
-    #       type: "alive"
-    #       alive: true
-    #     @sts.watch t, (tuple, info)=>
-    #       v = _.filter @vms, (vm)=>
-    #         return vm.id is tuple.id
-    #       v = null
-    #   error: (err)->
-    #     @isInitialized = true
-    #     @_connect()
+    @next()
 
-        # Parse.Push.send {
-        #   channels: ["masuilab"]
-        #   data: {
-        #     hoge: "Fuga"
-        #   }
-        # }, {
-        #   success: ->
-        #     console.log "success"
-        #   error: ->
-        #     console.log arguments
-        # }
-    # @ts.write
-    #   baba: "script"
-    #   type: "aliveCheck"
-    # t =
-    #   baba: "script"
-    #   type: "alive"
-    #   alive: true
-    # @ts.watch t, (tuple, info)=>
-      # flag = false
-      # for member in @members.getAll
-      #   if member.id().toString() is tuple.id.toString()
-      #     flag = true
-      # if !flag
-      #   @members.add tuple.id
-    # for task in @tasks
-    #   @humanExec task.key, task.args
-
-  _connect: ->
-    if @tasks.length > 0
-      for task in @tasks
-        @humanExec task.key, task.args
+  next: ->
+    if @tasks.length > 0 and !@isProcessing
+      task = @tasks.shift()
+      @humanExec task.key, task.args
 
   methodmissing: (key, args)->
     return sys.inspect @ if key is "inspect"
-    if @linda.io.socket.connecting?
-      @humanExec(key, args)
-    else
-      @tasks.push {key, args}
+    @tasks.push {key, args}
+    if !@isProcessing
+      @next()
+    # if @tasks.length is 0 and !@isProcessing and @linda.io.socket.connecting
+    #   @humanExec key, args
+    # else
+    #   @tasks.push {key, args}
+    # if @linda.io.socket.connecting?
+    #   if @tasks.length > 0
+    #     @tasks.push {key, args}
+    #   else
+    #     @humanExec(key, args)
+    # else
+    #   @tasks.push {key, args}
 
   humanExec: (key, args)->
-    if typeof args[args.length - 1] isnt "function"
-      throw new Error "last args should be callback function"
+    @isProcessing = true
     cid = callbackId()
     tuple = @createTupleWithOption key, cid, args[0]
-    callback = args[args.length - 1]
+    if typeof args[args.length - 1] is "function"
+      callback = args[args.length - 1]
+    else
+      callback = ->
     @once "#{cid}_callback", callback
     @sts.write tuple
+    r = null
     if tuple.type is "broadcast"
       h = []
       for i in [0..tuple.count]
@@ -119,19 +85,30 @@ class Script extends EventEmitter
           @addResult(cid, callback)
       async.parallel h, (err, results)=>
         throw err if err
+        r = results
         @cancel cid
         @emit "#{cid}_callback", results
+        @isProcessing = false
+        @next()
     else
       @waitReturn cid, (tuple)=>
+        r = tuple
         @emit "#{cid}_callback", tuple
+        @isProcessing = false
+        @next()
 
   createTupleWithOption: (key, cid, option)->
+    if !option?
+      option =
+        type: "eval"
+        format: "boolean"
     tuple =
       baba: "script"
+      name: @id
       type: option.type || "eval"
       key: key
       cid: cid || option.cid
-      format: option.format || "boolean"
+      format: option.format || @defaultFormat
     return tuple if typeof option is "function"
     for k, v of option
       switch k
@@ -155,7 +132,10 @@ class Script extends EventEmitter
   waitReturn: (cid, callback)->
     @sts.take {baba: "script", type: "return", cid: cid}, (err, tuple)=>
       worker = @createWorker tuple.data.worker
-      result = {value: tuple.data.value, worker: worker}
+      result =
+        value:  tuple.data.value
+        task:   tuple.data._task
+        worker: worker
       callback.call @, result
 
   addResult: (cid, callback)=>

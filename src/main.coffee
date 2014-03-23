@@ -8,5 +8,5 @@ createClient = (name)->
 module.exports =
   Script: Script
   Client: Client
-  Virtual: Virtual
+  Manager: require "../lib/manager"
   createClient: createClient
