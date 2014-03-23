@@ -14,7 +14,6 @@ class Manager
       throw err if err
       users = JSON.parse body
       for user in users
-        console.log user
         c = new Client @groupName
         c.id = user.id
         if user.sid?

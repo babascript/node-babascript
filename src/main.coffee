@@ -1,6 +1,6 @@
-Script = require "../lib/script"
-Client = require "../lib/client"
-Virtual = require "../lib/virtualbaba"
+Script  = require "../lib/script"
+Client  = require "../lib/client"
+Manager = require "../lib/manager"
 
 createClient = (name)->
   return new Client(name)
@@ -8,5 +8,5 @@ createClient = (name)->
 module.exports =
   Script: Script
   Client: Client
-  Manager: require "../lib/manager"
+  Manager: Manager
   createClient: createClient
