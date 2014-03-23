@@ -1,5 +1,6 @@
 node/
 env/
 list/
+lib/
 node_modules
 .DS_Store
