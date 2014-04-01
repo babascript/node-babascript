@@ -4,26 +4,25 @@ SocketIOClient = require "socket.io-client"
 
 class Client extends EventEmitter
 
+  api: "http://127.0.0.1:3000"
+
   constructor: (@name)->
     options =
       'force new connection': true
-    # socket = SocketIOClient.connect("http://linda.babascript.org/", options)
-    socket = SocketIOClient.connect("http://localhost:3000", options)
+    socket = SocketIOClient.connect(@api, options)
     @linda = new LindaSocketIOClient().connect socket
+    if !@linda.io.socket.open
+      @linda.io.once "connect", @connect
+    else
+      @connect()
     @tasks = []
     @id = @getId()
-    if socket.socket.connecting?
-      @connect()
-    else
-      @linda.io.once "connect", @connect
-    return @
 
-  connect: ->
+  connect: =>
     @group = @linda.tuplespace @name
     @next()
     @broadcast()
     @unicast()
-    @watchAliveCheck()
 
   next: ->
     if @tasks.length > 0
@@ -31,27 +30,25 @@ class Client extends EventEmitter
       format = task.format
       @emit "get_task", task
     else
-      @group.take {baba: "script", type: "eval"}, (err, tuple)=>
-        return err if err
-        @tasks.push tuple.data
-        @emit "get_task", tuple.data if @tasks.length > 0
+      console.log @linda
+      @group.take {baba: "script", type: "eval"}, @getTask
 
   unicast: ->
     t = {baba: "script", type: "unicast", unicast: @id}
-    @group.watch t, (err, tuple)=>
-      @tasks.push tuple.data
-      @emit "get_task", tuple.data if @tasks.length > 0
+    @group.read t, (err, tuple)=>
+      @getTask err, tuple
+      @group.watch t, @getTask
 
   broadcast: ->
     t = {baba: "script", type: "broadcast"}
     # 一度、readしてデータを取得する？
-    @group.watch t, (err, tuple)=>
-      @tasks.push tuple.data
-      @emit "get_task", tuple.data if @tasks.length > 0
+
+    @group.read t, (err, tuple)=>
+      @getTask err, tuple
+      @group.watch t, @getTask
 
   watchCancel: (callback)->
     @group.watch {baba: "script", type: "cancel"}, (err, tple)->
-      # console.log "cancel"
       cancelTasks = _.where @tasks, {cid: tuple.cid}
       if cancelTasks?
         for task in cancelTasks
@@ -60,8 +57,17 @@ class Client extends EventEmitter
             @next()
           @tasks.remove task
 
+  doCancel: ->
+    cid = @tasks.get "cid"
+    tuple =
+      baba: "script"
+      type: "cancel"
+      cid: cid
+    @tasks.shift()
+    @group.write tuple
+
   returnValue: (value, options={})->
-    task = @tasks[0]
+    task = @tasks.shift()
     tuple =
       baba: "script"
       type: "return"
@@ -72,12 +78,16 @@ class Client extends EventEmitter
       name: @group.name
       _task: task
     @group.write tuple
-    @tasks.shift()
     @next()
 
   watchAliveCheck: ->
     @group.watch {baba: "script", type: "aliveCheck"}, (err, tuple)=>
       @group.write {baba: "script", alive: true, id: @id}
+
+  getTask: (err, tuple)=>
+    return err if err
+    @tasks.push tuple.data
+    @emit "get_task", tuple.data if @tasks.length > 0
 
   getId: ->
     return "#{Math.random()*10000}_#{Math.random()*10000}"

@@ -1,33 +1,21 @@
 mm = require "methodmissing"
 EventEmitter = require("EventEmitter2").EventEmitter2
-LindaClient = require "../../linda-client/lib/client"
 LindaSocketIOClient = require("linda-socket.io").Client
 SocketIOClient = require "socket.io-client"
 moment = require "moment"
 sys = require "sys"
 _ = require "underscore"
 async = require "async"
-sync = require "synchronize"
-Client = require "./client"
 Manager = require "./manager"
-VirtualClient = require "./virtualbaba"
-{Parse} = require "parse"
-
-Linda = LindaClient.Linda
-TupleSpace = LindaClient.TupleSpace
-LindaBase = null
 
 class Script extends EventEmitter
-  cid: ""
-  @socket: null
-  @linda: null
-  @vc: null
-  @isProcessing: false
-  @defaultFormat: "boolean"
+  linda: null
+  isProcessing: false
+  defaultFormat: "boolean"
+  api: "http://127.0.0.1:3000"
 
   constructor: (_id)->
-    # socket = SocketIOClient.connect("http://linda.babascript.org/")
-    socket = SocketIOClient.connect("http://localhost:3000")
+    socket = SocketIOClient.connect @api
     if _id instanceof Manager
       @id = _id.groupName
     else
@@ -85,7 +73,6 @@ class Script extends EventEmitter
           @addResult(cid, callback)
       async.parallel h, (err, results)=>
         throw err if err
-        r = results
         @cancel cid
         @emit "#{cid}_callback", results
         @isProcessing = false

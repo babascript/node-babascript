@@ -4,7 +4,6 @@ path = require "path"
 assert = require "assert"
 Baba = require "../lib/main"
 _    = require "underscore"
-readline = require "readline"
 
 describe "client test", ->
 
@@ -13,16 +12,23 @@ describe "client test", ->
     assert.notEqual baba, null
     done()
 
+  it "valid namespace", (done)->
+    space = "baba_namespace"
+    baba = new Baba.Script space
+    assert.equal baba.id(), space
+    done()
+
   it "baba constructor's arguments[length-1,2] is function", (done)->
     space = "baba_constructor_event"
     baba = new Baba.Script space
     client = new Baba.Client space
     client.on "get_task", (result)->
+      console.log @
       @returnValue true
     client.on "cancel_task", (task)->
       console.log "task"
-    baba.引数最後二つはコールバック関数でも良い {format: "boolean"}, (result)->
-      done()
+    # baba.引数最後二つはコールバック関数でも良い {format: "boolean"}, (result)->
+    #   done()
 
   it "baba should implement callback event", (done)->
     space = "baba_add_event"
