@@ -1,7 +1,7 @@
 mm = require "methodmissing"
 {EventEmitter} = require "events"
 crypto = require "crypto"
-LindaClient = require "../../linda-client/lib/client"
+# LindaClient = require "../../linda-client/lib/client"
 Linda = LindaClient.Linda
 TupleSpace = LindaClient.TupleSpace
 moment = require "moment"
@@ -75,7 +75,7 @@ class Person extends EventEmitter
   _humanExec: (key, args)->
     if typeof arg[args.length - 1] isnt 'function'
       done = false
-      while(!done)
+      # while(!done)
         # ここで、何かしらの方法で @on "#{cid}" が実行されるまで
         # 待機する
 
@@ -105,7 +105,6 @@ class Persons extends Person
     self = super @name
     @members = []
     return self
-
   connect: =>
     super()
     @ts.write ["babascript", "alivecheck"]

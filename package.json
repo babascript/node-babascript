@@ -30,7 +30,9 @@
     "parse": "*",
     "linda-socket.io": "~0.1.5",
     "socket.io-client": "~0.9.16",
-    "request": "~2.33.0"
+    "request": "~2.33.0",
+    "EventEmitter2": "*",
+    "async": "^0.7.0"
   },
   "author": "Takumi Baba",
   "license": "MIT"

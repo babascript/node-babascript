@@ -1,6 +1,6 @@
 mm = require "methodmissing"
 EventEmitter = require("EventEmitter2").EventEmitter2
-LindaClient = require "../../linda-client/lib/client"
+# LindaClient = require "../../linda-client/lib/client"
 LindaSocketIOClient = require("linda-socket.io").Client
 SocketIOClient = require "socket.io-client"
 moment = require "moment"
@@ -10,8 +10,8 @@ async = require "async"
 Client = require "./client"
 {Parse} = require "parse"
 
-Linda = LindaClient.Linda
-TupleSpace = LindaClient.TupleSpace
+# Linda = LindaClient.Linda
+# TupleSpace = LindaClient.TupleSpace
 LindaBase = null
 
 class Script extends EventEmitter
@@ -99,6 +99,9 @@ class Script extends EventEmitter
 
   methodmissing: (key, args)->
     return sys.inspect @ if key is "inspect"
+    @do key, args
+
+  do: (key, args)->
     if @linda.io.socket.connecting?
       @humanExec(key, args)
     else
