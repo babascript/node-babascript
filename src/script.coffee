@@ -13,7 +13,7 @@ class Script extends EventEmitter
   linda: null
   isProcessing: false
   defaultFormat: "boolean"
-  api: "http://127.0.0.1:3000"
+  api: "http://localhost:3000"
 
   constructor: (_id)->
     socket = SocketIOClient.connect @api
@@ -36,14 +36,19 @@ class Script extends EventEmitter
 
   next: ->
     if @tasks.length > 0 and !@isProcessing
-      task = @tasks.shift()
-      @humanExec task.key, task.args
+      @task = @tasks.shift()
+      @humanExec @task.key, @task.args
 
-  methodmissing: (key, args)->
-    return sys.inspect @ if key is "inspect"
+  do: (key, args)->
+    args.cid = callbackId()
     @tasks.push {key, args}
     if !@isProcessing
       @next()
+    return args.cid
+
+  methodmissing: (key, args)->
+    return sys.inspect @ if key is "inspect"
+    @do key, args
     # if @tasks.length is 0 and !@isProcessing and @linda.io.socket.connecting
     #   @humanExec key, args
     # else
@@ -58,14 +63,14 @@ class Script extends EventEmitter
 
   humanExec: (key, args)->
     @isProcessing = true
-    cid = callbackId()
+    cid = args.cid
     tuple = @createTupleWithOption key, cid, args[0]
     if typeof args[args.length - 1] is "function"
       callback = args[args.length - 1]
     else
       callback = ->
     @once "#{cid}_callback", callback
-    @sts.write tuple
+    id = @sts.write tuple
     r = null
     if tuple.type is "broadcast"
       h = []
@@ -84,6 +89,8 @@ class Script extends EventEmitter
         @emit "#{cid}_callback", tuple
         @isProcessing = false
         @next()
+    console.log cid
+    return cid
 
   createTupleWithOption: (key, cid, option)->
     if !option?
@@ -114,11 +121,32 @@ class Script extends EventEmitter
           tuple[k] = v
     return tuple
 
-  cancel: (cid)->
+  cancel: (cid)=>
     @sts.write {baba: "script", type: "cancel", cid: cid}
+    console.log @task
+    console.log cid
+    if @task.args.cid is cid
+      console.log "yes!!"
+      @task = null
+      @isProcessing = false
+      @next()
+      return
+    for i in [0..@tasks.length-1]
+      console.log @tasks[i]
+      @tasks.splice i, 1 if @tasks[i].args.cid is cid
+
+    # for task, i in @tasks
+    #   console.log task, i
+      # if task.args.cid is cid
+
+    # for task in @tasks
+
+    #   console.log "cancel???"
+    #   console.log task
 
   waitReturn: (cid, callback)->
     @sts.take {baba: "script", type: "return", cid: cid}, (err, tuple)=>
+      return callback.call @, {value: "cancel"} if err is "cancel"
       worker = @createWorker tuple.data.worker
       result =
         value:  tuple.data.value
