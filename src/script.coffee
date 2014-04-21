@@ -33,6 +33,7 @@ class Script extends EventEmitter
 
   connect: =>
     @next()
+    @watchCancel()
 
   next: ->
     if @tasks.length > 0 and !@isProcessing
@@ -40,7 +41,7 @@ class Script extends EventEmitter
       @humanExec @task.key, @task.args
 
   do: (key, args)->
-    args.cid = callbackId()
+    args.cid = @callbackId()
     @tasks.push {key, args}
     if !@isProcessing
       @next()
@@ -48,6 +49,7 @@ class Script extends EventEmitter
 
   methodmissing: (key, args)->
     return sys.inspect @ if key is "inspect"
+    args.callback = args[args.length - 1]
     @do key, args
     # if @tasks.length is 0 and !@isProcessing and @linda.io.socket.connecting
     #   @humanExec key, args
@@ -89,7 +91,6 @@ class Script extends EventEmitter
         @emit "#{cid}_callback", tuple
         @isProcessing = false
         @next()
-    console.log cid
     return cid
 
   createTupleWithOption: (key, cid, option)->
@@ -117,32 +118,39 @@ class Script extends EventEmitter
           timeFormat = "YYYY-MM-DD HH:mm:ss"
           timeout = moment().add("seconds", v).format(timeFormat)
           tuple.timeout = timeout
+          setTimeout =>
+            @cancel cid
+          , v
         else
           tuple[k] = v
     return tuple
 
   cancel: (cid)=>
     @sts.write {baba: "script", type: "cancel", cid: cid}
-    console.log @task
-    console.log cid
-    if @task.args.cid is cid
-      console.log "yes!!"
-      @task = null
-      @isProcessing = false
-      @next()
-      return
-    for i in [0..@tasks.length-1]
-      console.log @tasks[i]
-      @tasks.splice i, 1 if @tasks[i].args.cid is cid
+    # if @task.args.cid is cid
+    #   console.log "yes!!"
+    #   @task = null
+    #   @isProcessing = false
+    #   @next()
+    #   return
+    # for i in [0..@tasks.length-1]
+    #   @tasks.splice i, 1 if @tasks[i].args.cid is cid
 
-    # for task, i in @tasks
-    #   console.log task, i
-      # if task.args.cid is cid
-
-    # for task in @tasks
-
-    #   console.log "cancel???"
-    #   console.log task
+  watchCancel: ->
+    @sts.watch {baba: "script", type: "cancel"}, (err, tuple)=>
+      throw err if err
+      cid = tuple.data.cid
+      if @task.args.cid is cid
+        @task.args.callback {value: "cancel"}
+        @task = null
+        @isProcessing = false
+        @next()
+        return
+      return if @tasks.length is 0
+      for i in [0..@tasks.length-1]
+        if @tasks[i].args.cid is cid
+          @tasks[i].args.callback {value: "cancel"}
+          @tasks.splice i, 1
 
   waitReturn: (cid, callback)->
     @sts.take {baba: "script", type: "return", cid: cid}, (err, tuple)=>
@@ -166,7 +174,7 @@ class Script extends EventEmitter
       args[0].unicast = worker
       @methodmissing key, args
     
-  callbackId = ->
+  callbackId: ->
     return "#{moment().unix()}_#{Math.random(1000000)}"
 
 module.exports = Script

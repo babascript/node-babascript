@@ -1,7 +1,8 @@
-
 Baba = require "../lib/main"
 
-baba = new Baba.Script("baba")
+manager = new Baba.Manager "masuilab"
+baba = new Baba.Script manager
+
 
 # 朝の出来事をプログラムすると...
 # 起きる
@@ -10,8 +11,6 @@ baba = new Baba.Script("baba")
 # 家出る準備する
 # 
 
-console.log baba.おはよう()
-console.log baba.こんばんわ()
 baba.ほげふが ->
   console.log "hoge"
 

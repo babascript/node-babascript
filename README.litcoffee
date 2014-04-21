@@ -74,6 +74,16 @@
 * id で指定された相手から命令が返ってきたらcallbackが実行される
 * 現状の id はとてもダサいので、変更したい
 
+## babas.get("takumi")
+
+    takumi = baba.get("takumi") 
+    takumi.進捗どうですか ->
+      # ...
+
+* babaという集合体の中から、ある特定の人物を生成する
+* こういうのはあっても良い
+
+
 # BabaScript Client
 
 * BabaScript Client は、BabaScriptからの命令を受け取るためのクライアントです。

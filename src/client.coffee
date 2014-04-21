@@ -9,7 +9,11 @@ class Client extends EventEmitter
   constructor: (@name)->
     options =
       'force new connection': true
-    socket = SocketIOClient.connect(@api, options)
+    socket = SocketIOClient.connect @api, options
+    socket.on "error", (e)->
+      console.log "error!error!"
+      console.log e
+      console.log arguments
     @linda = new LindaSocketIOClient().connect socket
     if !@linda.io.socket.open
       @linda.io.once "connect", @connect
@@ -30,7 +34,6 @@ class Client extends EventEmitter
       format = task.format
       @emit "get_task", task
     else
-      console.log @linda
       @group.take {baba: "script", type: "eval"}, @getTask
 
   unicast: ->

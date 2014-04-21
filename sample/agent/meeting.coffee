@@ -4,21 +4,14 @@ members = new Baba.Script "baba"
 
 id = members.てすと (result)->
   if result.value is "cancel"
-    console.log "hogeeeee"
+    console.log "cancel..."
   else
-    console.log "year?"
-console.log "next!"
+    console.log result.value
 b = members.ほげふが (result)->
-  console.log "ieeeeeeei"
-setTimeout ->
-  console.log "timeout"
-  console.log id
-  console.log b
-  members.cancel b
-  setTimeout ->
-    members.cancel id
-  , 2000
-, 5000
+  console.log result.value
+
+
+
 # members.発表はありますか {broadcast: "all"}, (results)->
 #   presenters = _.filter results, (r)->
 #     return r.value is true

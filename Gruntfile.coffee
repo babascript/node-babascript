@@ -8,6 +8,8 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-simple-mocha'
   grunt.loadNpmTasks 'grunt-notify'
 
+  grunt.registerTask "build",   [ 'coffeelint', 'coffee']
+  grunt.registerTask "reload",   [ 'coffeelint', 'coffee', "watch"]
   grunt.registerTask 'test',    [ 'coffeelint', 'coffee']
   grunt.registerTask 'default', [ 'coffeelint', 'coffee', 'simplemocha', 'watch' ]
   grunt.registerTask "debug", ["coffeelint", "coffee", "watch"]
@@ -58,4 +60,4 @@ module.exports = (grunt) ->
         interrupt: yes
       dist:
         files: [ 'src/**/*.coffee', 'tests/*.coffee' ]
-        tasks: [ 'test' ]
+        tasks: [ 'build' ]

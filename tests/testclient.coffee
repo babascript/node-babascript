@@ -23,12 +23,11 @@ describe "client test", ->
     baba = new Baba.Script space
     client = new Baba.Client space
     client.on "get_task", (result)->
-      console.log @
       @returnValue true
     client.on "cancel_task", (task)->
       console.log "task"
-    # baba.引数最後二つはコールバック関数でも良い {format: "boolean"}, (result)->
-    #   done()
+    baba.引数最後二つはコールバック関数でも良い {format: "boolean"}, (result)->
+      done()
 
   it "baba should implement callback event", (done)->
     space = "baba_add_event"
@@ -40,17 +39,6 @@ describe "client test", ->
       console.log "cancel_task"
     baba.くらいあんとにこーるばっくいべんと {format: "boolean"}, (result)->
       assert.equal result.value, true
-      done()
-
-  it "create client", (done)->
-    space = "baba_create_client"
-    baba = new Baba.Script space
-    client = Baba.createClient(space)
-    .on "get_task", ->
-      @returnValue true
-    .on "cancel_task", ->
-      done()
-    baba.くりえーとくらいあんと (result)->
       done()
 
   it "return value should be boolean", (done)->
@@ -67,7 +55,7 @@ describe "client test", ->
       done()
 
   it "should multiple task", (done)->
-    space = "baba_multiple"
+    space = "baba_multiple_task"
     baba = new Baba.Script space
     client = new Baba.Client space
     client.on "get_task", (result)->
@@ -137,15 +125,10 @@ describe "client test", ->
     for i in [0..num-1]
       c = new Baba.Client space
       c.on "get_task", (result)->
-        console.log "ぶろーどきゃすと get task"
-        console.log @
         @returnValue true
       clients.push c
     setTimeout =>
-      console.log "num is #{num}"
       baba.ぶろーどきゃすと {format: "boolean", broadcast: num}, (result)->
-        console.log "ぶろーどきゃすと"
-        console.log result
         assert.equal num, result.length
         done()
     , 3000

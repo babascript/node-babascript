@@ -1,15 +1,22 @@
 #!/usr/bin/env node
 
-var BabaScript = require("../lib/main");
-var baba = new Baba.Script("takumibaba")
+var child_process = require("child_process");
+console.log(child_process);
 
-var methodName = process.argv[2];
-var args = [];
-for(var i=3;i<process.argv.length; i++){
-	args.push(process.argv[i]);
+// var Baba = require("../lib/main");
+// var baba = new Baba.Script("baba");
+argv = process.argv;
+if(argv[2] === '-e'){
+  var methodname = argv[3];
+  func = function(result){console.log(result);process.exit()}
+  var child = child_process.fork(func);
+  // a = function(methodname){
+  //   baba.do(methodname, func);
+  // }
+  // a(methodname)
+  // a.call(baba, methodname)
+  // baba.do(methodname, [func]);
+  // baba.こんばんわあ(func)
+}else{
+  console.log(process.argv);  
 }
-args.push(function(result){
-	console.log(result[3]);
-	process.exit();
-});
-baba.humanExec(methodName, args);	

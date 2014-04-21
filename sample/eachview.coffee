@@ -7,3 +7,4 @@ baba.進捗どうですか {format: "list", list:["進捗ダメです", "進捗�
   baba.進捗どうですか {format: "string"}, (result)->
     baba.進捗どうですか {format: "number"}, (result)->
     baba.進捗どうですか {format: "boolean"}, (result)->
+      console.log result
