@@ -6,6 +6,8 @@ API = "http://localhost:3000/api"
 # Babascript::Manager::Client
 # 分離させてしまっても良いかも。
 
+
+
 class Manager
   users: []
 

@@ -32,7 +32,9 @@
     "socket.io-client": "~0.9.16",
     "request": "~2.33.0",
     "EventEmitter2": "*",
-    "async": "^0.7.0"
+    "async": "^0.7.0",
+    "mongoose": "^3.8.8",
+    "backbone": "^1.1.2"
   },
   "author": "Takumi Baba",
   "license": "MIT"
