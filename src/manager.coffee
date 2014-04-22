@@ -1,6 +1,11 @@
 Request = require "request"
 Client  = require "./client"
 API = "http://localhost:3000/api"
+
+# Babascript::Manager::Server
+# Babascript::Manager::Client
+# 分離させてしまっても良いかも。
+
 class Manager
   users: []
 
@@ -11,6 +16,7 @@ class Manager
     option =
       url: "#{API}/group/#{@groupName}/member"
     Request.get option, (err, res, body)=>
+      console.log body
       throw err if err
       users = JSON.parse body
       for user in users

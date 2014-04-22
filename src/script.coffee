@@ -40,7 +40,17 @@ class Script extends EventEmitter
       @task = @tasks.shift()
       @humanExec @task.key, @task.args
 
-  do: (key, args)->
+  exec: (key, arg, func)->
+    console.log @
+    args = [arg, func]
+    @_do key, args
+    # args.cid = @callbackId()
+    # @tasks.push {key, args}
+    # if !@isProcessing
+    #   @next()
+    # return args.cid
+
+  _do: (key, args)->
     args.cid = @callbackId()
     @tasks.push {key, args}
     if !@isProcessing
@@ -50,7 +60,7 @@ class Script extends EventEmitter
   methodmissing: (key, args)->
     return sys.inspect @ if key is "inspect"
     args.callback = args[args.length - 1]
-    @do key, args
+    @_do key, args
     # if @tasks.length is 0 and !@isProcessing and @linda.io.socket.connecting
     #   @humanExec key, args
     # else
