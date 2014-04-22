@@ -1,88 +1,92 @@
-Request = require "request"
-Client  = require "./client"
-API = "http://localhost:3000/api"
-
-# Babascript::Manager::Server
-# Babascript::Manager::Client
-# 分離させてしまっても良いかも。
+mongoose = require "mongoose"
+mongoose.connect "mongodb://localhost/babascript/manager"
+_ = require "underscore"
 
 class Manager
-  users: []
 
-  constructor: (@groupName)->
-    @getUsers()
+  constructor: ->
+    
 
-  getUsers: ->
-    option =
-      url: "#{API}/group/#{@groupName}/member"
-    Request.get option, (err, res, body)=>
-      console.log body
+  getUser: (username)->
+    user = new User username
+
+
+  getGroup: (groupname)->
+
+class User
+  data: {}
+  constructor: (@username)->
+
+  find: (callback)->
+    return false if !@username
+    UserModel.findOne {username: @username}, (err, user)=>
       throw err if err
-      users = JSON.parse body
-      for user in users
-        c = new Client @groupName
-        c.id = user.id
-        if user.sid?
-          c.type = "web"
-        else
-          c.type = "mobile"
-        c.status = c.linda.tuplespace @groupName
-        c.mediator = c.linda.tuplespace user.id
-        c.on "get_task", @getTask
-        c.on "cance_task", @cancelTask
-        c.mediator.read {type: "status"}, (err, result)=>
-          throw err if err
-          @statusCheck result
-          c.mediator.watch {type: "status"}, @statusCheck
-        c.mediator.watch {type: "notify"}, (err, result)=>
-          tuple =
-            type: "notify2"
-            name: result.data.name
-            group: @groupName
-          c.mediator.write tuple
-        @users.push c
+      callback user
 
-  getTask: (result)->
-    # console.log "get task!!"
-    # console.log @type
-    # console.log result
-    @mediator.write result
-    @mediator.take {cid: result.cid, type: "return"}, (err, r)=>
-      # console.log "mediator take"
-      # console.log r
-      @returnValue r.data.value
-    option =
-      method: "POST"
-      uri: "#{API}/notification/name/#{@id}"
-      json:
-        userid: @id
-        message: result
-    Request.post option, (err, res, body)=>
+  save: ->
+    return false if !@username
+    @find (user)->
+      user = new UserModel() if !user
+      user[username] = @username
+      for key, value of @data
+        user[key] = value
+      user.save (err)=>
+        throw err if err
+        return true
+
+  set: (name, data)->
+    @data[name] = data
+
+  get: (name)->
+    return @data[name]
+
+class Group
+  data: {}
+  members: []
+  constructor: (@groupname)->
+
+  find: (callback)->
+    return false if !@groupname
+    GroupModel.findOne {name: @groupname}, (err, group)->
       throw err if err
-      # @mediator.take {cid: result.cid, type: "return"}, (err, r)=>
-      #   throw err if err
-      #   @returnValue r.data.value
-    # if @type is "web"
-    #   @mediator.write result
-    #   @mediator.take {cid: result.cid, type: "return"}, (err, r)=>
-    #     @returnValue r.data.value
-    # else
-    #   option =
-    #     method: "POST"
-    #     uri: "#{API}/notification/name/#{@id}"
-    #     json:
-    #       userid: @id
-    #       message: result
-    #   Request.post option, (err, res, body)=>
-    #     throw err if err
-    #     @mediator.take {cid: result.cid, type: "return"}, (err, r)=>
-    #       throw err if err
-    #       @returnValue r.data.value
+      callback group
 
-  cancelTask: (result)->
+  save: ->
+    return false if @groupname
+    @find (group)->
+      group = new GroupModel() if !group
 
-  statusCheck: (err, result)->
-    console.log "status"
-    console.log result
+  addMember: (name)->
 
-module.exports = Manager
+    @members.push membername
+
+  removeMember: (membername)->
+    for i in [0..@members.length-1]
+      @members.splice i, 1 if @members[i] is membername
+
+
+
+UserModel = mongoose.model "user", new mongoose.Schema
+  username: type: String
+  password: type: String
+  groups: type: [{type: mongoose.Schema.Types.ObjectId, ref: "group"}]
+
+GroupModel = mongoose.model "group", new mongoose.Schema
+  name: type: String
+  members: type: [{type: mongoose.Schema.Types.ObjectId, ref: "user"}]
+
+
+# u = new User()
+# u.set "username", "baba"
+# u.set "password", "takumi"
+# u.save()
+
+i = new User "baba"
+
+
+group = new Group "g"
+for i in ["a", "b", "c"]
+  group.addMember i
+console.log group.members
+group.removeMember "b"
+console.log group.members
