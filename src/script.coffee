@@ -5,9 +5,10 @@ SocketIOClient = require "socket.io-client"
 moment = require "moment"
 sys = require "sys"
 _ = require "underscore"
+Baba = require "./main"
 async = require "async"
-Client = require "./client"
-Manager = require "./manager"
+Client = Baba.Client
+# Manager = require "./manager"
 
 class Script extends EventEmitter
   linda: null
@@ -17,10 +18,11 @@ class Script extends EventEmitter
 
   constructor: (_id)->
     socket = SocketIOClient.connect @api
-    if _id instanceof Manager
-      @id = _id.groupName
-    else
-      @id = _id
+    # if _id instanceof Manager
+    #   @id = _id.groupName
+    # else
+    #   @id = _id
+    @id = _id
     @linda ?= new LindaSocketIOClient().connect socket
     @sts = @linda.tuplespace @id
     @tasks = []
