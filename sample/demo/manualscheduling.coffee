@@ -5,7 +5,6 @@ _ = require "underscore"
 manager = new Baba.Manager "masuilab"
 members = new Baba.Script manager
 
-
 # 複数選択UIが必要になりそう
 # members.参加可能な日程を選んでください {}, (result)->
 members.exec "参加可能な日程を選んでください", {}, (result)->
