@@ -4,16 +4,13 @@ SocketIOClient = require "socket.io-client"
 
 class Client extends EventEmitter
 
-  api: "http://127.0.0.1:3000"
+  # api: "http://127.0.0.1:3000"
+  api: "http://linda.babascript.org"
 
   constructor: (@name)->
     options =
       'force new connection': true
     socket = SocketIOClient.connect @api, options
-    socket.on "error", (e)->
-      console.log "error!error!"
-      console.log e
-      console.log arguments
     @linda = new LindaSocketIOClient().connect socket
     if !@linda.io.socket.open
       @linda.io.once "connect", @connect
@@ -76,7 +73,7 @@ class Client extends EventEmitter
       type: "return"
       value: value
       cid: task.cid
-      worker: @id
+      worker: @name
       options: options
       name: @group.name
       _task: task

@@ -5,24 +5,23 @@ SocketIOClient = require "socket.io-client"
 moment = require "moment"
 sys = require "sys"
 _ = require "underscore"
-Baba = require "./main"
 async = require "async"
-Client = Baba.Client
+VC = require "../lib/vc"
 # Manager = require "./manager"
 
 class Script extends EventEmitter
   linda: null
   isProcessing: false
   defaultFormat: "boolean"
-  api: "http://localhost:3000"
+  api: "http://linda.babascript.org"
+  # api: "http://localhost:3000"
 
   constructor: (_id)->
     socket = SocketIOClient.connect @api
-    # if _id instanceof Manager
-    #   @id = _id.groupName
-    # else
-    #   @id = _id
-    @id = _id
+    if _id instanceof VC
+      @id = _id.groupName
+    else
+      @id = _id
     @linda ?= new LindaSocketIOClient().connect socket
     @sts = @linda.tuplespace @id
     @tasks = []
@@ -43,7 +42,6 @@ class Script extends EventEmitter
       @humanExec @task.key, @task.args
 
   exec: (key, arg, func)->
-    console.log @
     args = [arg, func]
     @_do key, args
     # args.cid = @callbackId()
@@ -93,7 +91,7 @@ class Script extends EventEmitter
           @addResult(cid, callback)
       async.parallel h, (err, results)=>
         throw err if err
-        @cancel cid
+        # @cancel cid
         @emit "#{cid}_callback", results
         @isProcessing = false
         @next()
@@ -179,12 +177,19 @@ class Script extends EventEmitter
       callback null, r
 
   createWorker: (worker)->
-    return mm @, (key, args)=>
-      if typeof args[0] is 'function'
-        args[1] = args[0]
-        args[0] = {}
-      args[0].unicast = worker
-      @methodmissing key, args
+    return new Script worker
+    # if @id isnt worker
+    #   return new Script worker
+    # else
+    #   return
+    
+    # return mm @, (key, args)=>
+    #   if typeof args[0] is 'function'
+    #     args[1] = args[0]
+    #     args[0] = {}
+    #   args[0].unicast = worker
+    #   console.log "hoge"
+    #   @methodmissing key, args
     
   callbackId: ->
     return "#{moment().unix()}_#{Math.random(1000000)}"
