@@ -97,8 +97,8 @@ describe "client test", ->
     space = "baba_string"
     name = "baba"
     baba = new Baba.Script space
-    hoge = new Baba.Client space
-    hoge.on "get_task", ->
+    client = new Baba.Client space
+    client.on "get_task", ->
       @returnValue name
     baba.すとりんぐをください {format: "string"}, (result)->
       assert.equal result.value, name
@@ -140,22 +140,25 @@ describe "client test", ->
     client = new Baba.Client space
     client.on "get_task", (tuple)->
       @returnValue true
-    baba.りざるとどっとわーかー {format: "boolean"}, (result)->
-      assert.notEqual result.worker, null
-      result.worker.つづき {format: "boolean"}, (result)->
+    setTimeout ->
+      baba.りざるとどっとわーかー {format: "boolean"}, (result)->
         assert.notEqual result.worker, null
-        done()
+        console.log result.worker
+        result.worker.つづき {format: "boolean"}, (result)->
+          assert.notEqual result.worker, null
+          done()
+    , 1000
 
   it "multi result.worker", (done)->
     space = "baba_multi_result_worker"
     num = 3
     clients = []
     baba = new Baba.Script space
-    for i in [0..num]
-      clients.push (new Baba.Client space).on("get_task", ->
+    for i in [0..num-1]
+      c = new Baba.Client space
+      c.on "get_task", (tuple)->
         @returnValue true
-      )
-        
+      clients.push c
     setTimeout =>
       baba.まるちなりざるとどっとわーかー {format: "boolean", broadcast: num}, (result)->
         r = _.sample result
