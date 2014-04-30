@@ -1,6 +1,5 @@
 Baba = require "../../lib/main"
-manager = new Baba.Manager "mitoh"
-baba = new Baba.Script manager
+baba = new Baba.Script "baba"
 
 list = ["ペペロンチーノ", "カルボナーラ", "トマトクリーム", "ボロネーゼ"]
 baba.どれを作りますか {format: "list", list: list}, (data)->

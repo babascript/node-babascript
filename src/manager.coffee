@@ -2,11 +2,25 @@ mongoose = require "mongoose"
 mongoose.connect "mongodb://localhost/babascript/manager"
 _ = require "underscore"
 Crypto = require "crypto"
+
+# linda を組み込む
+# localな分散処理機構を組み合わせる
+# 人リソースの管理もする
   
 class Manager
+  isAuthenticate: false
+  user: null
 
   constructor: ->
-    
+
+  authenticate: (@username, @password, callback)->
+    throw Error "username is undefined" if !@username
+    throw Error "password is undefined" if !@password
+    pass = Crypto.createHash("sha256").update(@password).digest "hex"
+    UserModel.findOne {username: username, password: pass}, (err, user)->
+      throw err if err
+      return throw Error "user is not defined" if !user?
+      
 
   getUser: (username)->
     user = new User username
