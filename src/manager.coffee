@@ -2,38 +2,140 @@ mongoose = require "mongoose"
 mongoose.connect "mongodb://localhost/babascript/manager"
 _ = require "underscore"
 Crypto = require "crypto"
+LindaSocketIO = require("linda-socket.io")
+Linda = LindaSocketIO.Linda
+TupleSpace = LindaSocketIO.TupleSpace
 
 # linda を組み込む
 # localな分散処理機構を組み合わせる
 # 人リソースの管理もする
-  
-class Manager
-  isAuthenticate: false
-  user: null
+# Manager を立ち上げると、...?
+# Lindaと同じような実装にする？
+# Manager に接続するためのコードが必要？
 
+# framework for Node.js express 
+
+class BBLinda extends Linda 
   constructor: ->
+    @spaces = {}
+    @sids = {}
 
-  authenticate: (@username, @password, callback)->
-    throw Error "username is undefined" if !@username
-    throw Error "password is undefined" if !@password
-    pass = Crypto.createHash("sha256").update(@password).digest "hex"
-    UserModel.findOne {username: username, password: pass}, (err, user)->
-      throw err if err
-      return throw Error "user is not defined" if !user?
-      
+  tuplespace: (name)->
+    return @spaces[name] ||
+           @spaces[name] = new TupleSpace(name)
 
-  getUser: (username)->
-    user = new User username
+  listen: ()->
 
-  getGroup: (groupname)->
+  write: (data)=>
+  read:  (data)=>
+  take:  (data)=>
+  watch: (data)=>
+  cancel: (data)=>
+
+class BBTupleSpace extends TupleSpace
+  constructor: (@name='noname')->
+    super(@name)
+  _write: (tuple, options={expire: Tuple.DEFAULT.expire}) ->
+    @write tuple, options
+  _read: (tuple, callback) ->
+    @read tuple, callback
+  _take: (tuple, callback) ->
+    @take tuple, callback
+  _watch: (tuple, callback) ->
+    @watch tuple, callback
+
+
+# Manager には、Manage-client と、 babascript と babascriptclient
+# この3種が接続する。
+class Manager
+  constructor: (io, server)->
+    @linda = Linda.listen {io: io, server: server}
+    @linda.io.on "connection", (socket)=>
+      socket.on "disconnect", (data)=>
+      socket.on "__linda_write", (data)=>
+      socket.on "__linda_take", (data)=>
+      socket.on "__linda_cancel", (data)=>
+
+
+  attach: (@app)->
+    @app.post "/api/user/new", @User._create
+    @app.get  "/api/user/:name", @User._read # 一部login
+    @app.put  "/api/user/:name", @User._update # login
+    @app.delete "/api/user/:name", @User._delete # login
+
+    @app.post "/api/group/new", @Group._create # login
+    @app.get  "/api/group/:name", @Group._read # login
+    @app.put  "/api/group/:name", @Group._update # owner only
+    @app.delete "/api/group/:name", @Group._delete # owner only
+
+  Session:
+    _login: (req, res)->
+
+    login: (username, password, callback)->
+      User.find username, password, (result)->
+
+  User:
+    _create: (req, res)=>
+      attrs =
+        name: req.body.name
+        password: req.body.password  
+      @create attrs, res.json
+    create: (attrs, callback)=>
+      User.create attrs.name, attrs.password, (user)->
+        data = if !user then {status: false} else {status: true, user: user}
+        callback data
+    _read: (req, res)=>
+      @read req.params.name, res.json
+    read: (name, callback)=>
+      User.find name, (user)->
+        return callback user
+    _update: (req, res)=>
+      attrs =
+        name: req.params.name
+        data: req.body.attrs
+      @update name, data, res.json
+    update: (attr, callback)=>
+
+    _delete: (req, res)=>
+      @delete req.aprams.name, res.json
+    delete: (name, callback)=>
+      User.find name, (user)->
+        status = false
+        if user
+          user.remove()
+          status = true
+        callback status
+
+  Group:
+    _create: (req, res)=>
+      attrs =
+        name: req.body.name
+        owner: req.body.owner
+      @create attrs , res.json
+    create: (attrs, callback)=>
+      Group.create attrs.name, attrs.owner, (result)->
+        
+    _read: (req, res)=>
+      name = req.params.name
+      @read name, res.json
+    read: (name, callback)=>
+      Group.find name, (result)->
+        return callback result
+    _update: (req, res)=>
+    update: (name, attr)=>
+    _delete: (req, res)=>
+    delete: (name)=>
 
 class User
   isAuthenticate: false
-  data: {}
+  username: ""
+  password: ""
+  groups: []
   constructor: ->
 
+
   @find = (username, callback)->
-    throw Error "username is undefined" if !username
+    throw new Error "username is undefined" if !username
     u = new User()
     UserModel.findOne {username: username}, (err, user)=>
       throw err if err
@@ -41,19 +143,29 @@ class User
       return callback null if !user
       return callback u
 
+  @find = (username, password, callback)->
+    throw new Error "username is undefined" if !username
+    throw new Error "password or callbakc is undefined" if !username
+    if typeof password is 'function'
+      console.log "normal normal"
+    else if typeof password is 'string' and typeof callback is 'function'
+    console.log 'loggined user'
+
+
   @authenticate = (username, password,callback)->
-    throw Error "username is undefined" if !username
-    throw Error "password is undefined" if !password
+    throw new Error "username is undefined" if !username
+    throw new Error "password is undefined" if !password
     UserModel.findOne {username: username, password: password}, (err, user)=>
       throw err if err
+      return callback null if !user
       u = new User()
       u.isAuthenticate = true
       u.data = user
-      return callback null if !user
       return callback u
 
-  @create = (username, password,callback)->
-    throw Error "username or password is undefined" if !username or !password
+  @create = (username, password, callback)->
+    throw new Error "username is undefined" if !username
+    throw new Error "password is undefined" if !password
     UserModel.findOne {username: username}, (err, user)->
       throw err if err
       return callback false if !user
@@ -62,12 +174,15 @@ class User
       u.data = new UserModel()
       u.data.username = username
       u.data.password = pass
-      callback u
+      u.save (err)->
+        throw err if err
+        u.isAuthenticate = true
+        callback u
 
-  authenticate: (username, password,callback)->
-    throw Error "username is undefined" if !username
-    throw Error "password is undefined" if !password
-    UserModel.findOne {username: username, password: password}, (err, user)=>
+  authenticate: (password,callback)->
+    throw new Error "username is undefined" if !@username
+    throw new Error "password is undefined" if !password
+    UserModel.findOne {username: @username, password: password}, (err, user)=>
       throw err if err
       @isAuthenticate = true
       return callback false if !user
@@ -173,7 +288,7 @@ class Group
   constructor: ->
 
   @create = (name, callback)->
-    throw Error "name is undefined" if !name
+    throw new Error "name is undefined" if !name
     GroupModel.findOne {name: name}, (err, group)->
       throw err if err
       return callback false if group
@@ -183,7 +298,7 @@ class Group
       return group
 
   @find = (name, callback)->
-    throw Error "name is undefined" if !name
+    throw new Error "name is undefined" if !name
     g = new Group()
     GroupModel.findOne {name: name}, (err, group)->
       throw err if err
@@ -216,7 +331,7 @@ class Group
       callback @
 
   addMember: (name, callback)->
-    throw Error "name is undefined" if !name
+    throw new Error "name is undefined" if !name
     UserModel.findOne {username: name}, (err, user)=>
       throw err if err
       return callback null if !user
@@ -234,7 +349,7 @@ class Group
           callback @data
 
   removeMember: (name, callback)->
-    throw Error "name is undefined" if !name
+    throw new Error "name is undefined" if !name
     UserModel.findOne {username: name}, (err, user)=>
       throw err if err
       return callback null if !user
@@ -265,11 +380,14 @@ class Group
 UserModel = mongoose.model "user", new mongoose.Schema
   username: type: String
   password: type: String
+  twitter: type: String
+  mail: type: String
   device: type: {type: mongoose.Schema.Types.ObjectId, ref: "device"}
   groups: type: [{type: mongoose.Schema.Types.ObjectId, ref: "group"}]
 
 GroupModel = mongoose.model "group", new mongoose.Schema
   name: type: String
+  owners: type: [{type: mongoose.Schema.Types.ObjectId, ref: "user"}]
   members: type: [{type: mongoose.Schema.Types.ObjectId, ref: "user"}]
 
 DeviceModel = mongoose.model "device", new mongoose.Schema
