@@ -6,8 +6,7 @@ moment = require "moment"
 sys = require "sys"
 _ = require "underscore"
 async = require "async"
-VC = require "../lib/vc"
-# Manager = require "./manager"
+ManagerClient = require "../lib/managerclient"
 
 class Script extends EventEmitter
   linda: null
@@ -16,9 +15,12 @@ class Script extends EventEmitter
   api: "http://linda.babascript.org"
   # api: "http://localhost:3000"
 
+  @create = (id)->
+    return new Script id
+
   constructor: (_id)->
     socket = SocketIOClient.connect @api
-    if _id instanceof VC
+    if _id instanceof ManagerClient
       @id = _id.groupName
     else
       @id = _id
