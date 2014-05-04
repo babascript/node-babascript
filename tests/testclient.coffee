@@ -143,7 +143,6 @@ describe "client test", ->
     setTimeout ->
       baba.りざるとどっとわーかー {format: "boolean"}, (result)->
         assert.notEqual result.worker, null
-        console.log result.worker
         result.worker.つづき {format: "boolean"}, (result)->
           assert.notEqual result.worker, null
           done()
@@ -163,25 +162,31 @@ describe "client test", ->
       baba.まるちなりざるとどっとわーかー {format: "boolean", broadcast: num}, (result)->
         r = _.sample result
         id = r.worker.id
+        # これのthis は何？
         r.worker.てすと {format: "boolean"}
         r.worker.on "get_task", (result)->
           assert.equal result.worker.id, id
           done()
     , 1000
 
-  # it "multi player", (done)->
+  it "multi player", (done)->
     space_baba = "baba_multi_player_baba"
     space_yamada = "baba_multi_player_yamada"
     baba = new Baba.Script space_baba
     yamada = new Baba.Script space_yamada
 
-    client_baba = Baba.createClient(space_baba).on "get_task", ->
+    clientBaba = new Baba.Client space_baba
+    clientBaba.on "get_task", ->
       @returnValue "baba"
-    client_yamada = Baba.createClient(space_yamada).on "get_task", ->
+
+    clientaYamada = new Baba.Client space_yamada
+    clientaYamada.on "get_task", ->
       @returnValue "yamada"
 
     baba.ばばさん (result)=>
+      console.log result
       assert.equal result.value, "baba"
+      done()
       yamada.やまだくん (result)=>
         assert.equal result.value, "yamada"
         done()
