@@ -9,7 +9,7 @@ API = "http://linda.babascript.org"
 
 
 
-class VC
+class ManagerClient
   users: []
 
   constructor: (@groupName)->
@@ -21,7 +21,7 @@ class VC
     @users = []
     res = [{id: "baba"}, {id: "usuki"}, {id: "nakazono"}]
     for u in res
-      @createClient u
+      @users.push @createClient(u)
     # Request.get option, (err, res, body)=>
     #   throw err if err
     #   # users = JSON.parse body
@@ -44,7 +44,7 @@ class VC
       throw err if err
       @statusCheck result
       c.mediator.watch {type: "status"}, @statusCheck
-    @users.push c
+    return c
 
   getTask: (result)->
     console.log "get task!!"
@@ -91,4 +91,4 @@ class VC
     console.log "status"
     console.log result
 
-module.exports = VC
+module.exports = ManagerClient
