@@ -1,74 +1,302 @@
 mongoose = require "mongoose"
-mongoose.connect "mongodb://localhost/babascript/manager"
 _ = require "underscore"
 Crypto = require "crypto"
-  
+LindaSocketIO = require("linda-socket.io")
+Linda = LindaSocketIO.Linda
+TupleSpace = LindaSocketIO.TupleSpace
+
+# linda を組み込む
+# localな分散処理機構を組み合わせる
+# 人リソースの管理もする
+# Manager を立ち上げると、...?
+# Lindaと同じような実装にする？
+# Manager に接続するためのコードが必要？
+
+# framework for Node.js express
+
+# class BBLinda extends Linda
+#   constructor: ->
+#     @spaces = {}
+#     @sids = {}
+
+#   tuplespace: (name)->
+#     return @spaces[name] ||
+#            @spaces[name] = new TupleSpace(name)
+
+#   listen: ()->
+
+#   write: (data)=>
+#   read:  (data)=>
+#   take:  (data)=>
+#   watch: (data)=>
+#   cancel: (data)=>
+
+# class BBTupleSpace extends TupleSpace
+#   constructor: (@name='noname')->
+#     super(@name)
+#   _write: (tuple, options={expire: Tuple.DEFAULT.expire}) ->
+#     @write tuple, options
+#   _read: (tuple, callback) ->
+#     @read tuple, callback
+#   _take: (tuple, callback) ->
+#     @take tuple, callback
+#   _watch: (tuple, callback) ->
+#     @watch tuple, callback
+
+
+# Manager には、Manage-client と、 babascript と babascriptclient
+# この3種が接続する。
 class Manager
-
   constructor: ->
-    
+    mongoose.connect "mongodb://localhost/babascript/manager"
 
-  getUser: (username)->
-    user = new User username
+  attach: (@io, @server)->
+    # for http.createServer
+    @linda = Linda.listen {io: io, server: server}
+    @linda.io.on "connection", (socket)=>
+      socket.on "disconnect", @Socket.disconnect
+      socket.on "__linda_write", @Socket.write
+      socket.on "__linda_take", @Socket.take
+      socket.on "__linda_cancel", @Socket.cancel
+    if @server instanceof http.Server
+      @server.on 'request', (req, res)->
+      if req.pathname.match /\/api\/user\/*/
+        console.log "user"
+    else
+      @app.post "/api/user/new", @User._create
+      @app.get  "/api/user/:name", @User._read # 一部login
+      @app.put  "/api/user/:name", @User._update # login
+      @app.delete "/api/user/:name", @User._delete # login
 
-  getGroup: (groupname)->
+      @app.post "/api/group/new", @Group._create # login
+      @app.get  "/api/group/:name", @Group._read # login
+      @app.put  "/api/group/:name", @Group._update # owner only
+      @app.delete "/api/group/:name", @Group._delete # owner only
 
-class User
-  isAuthenticate: false
+  # return status, user
+  createUser: (attrs, callback)->
+    username = attrs.username
+    password = attrs.password
+    User.create username, password, (err, user)->
+      if err
+        return callback err, null
+      if !user?
+        error = new Error "user not found"
+        return callback error, user
+      else
+        return callback null, user
+
+  # return user of null
+  getUser: (username, callback)->
+    User.find username, callback
+
+  createGroup: (attrs, callback)->
+    owner = attrs.owner
+    return callback false, null if !owner? or !owner.isAuthenticate
+    Group.create attrs, (status, group)->
+      console.log group
+      if !group?
+        return callback false, null
+      else
+        return callback true, group
+
+  getGroup: (attrs, callback)->
+    Group.find attrs, callback
+
+  Socket:
+    write: (data)=>
+    take: (data)=>
+    cancel: (data)=>
+    disconnect: (data)=>
+
+  Session:
+    _login: (req, res)->
+      session = req.session
+      login session
+    login: (username, password, callback)->
+      User.find username, password, (result)->
+
+  User:
+    _create: (req, res)=>
+      attrs =
+        name: req.body.name
+        password: req.body.password
+      @create attrs, res.json
+    create: (attrs, callback)=>
+      User.create attrs.name, attrs.password, (user)->
+        data = if user? then {status: false} else {status: true, user: user}
+        callback data
+    _read: (req, res)=>
+      @read req.params.name, res.json
+    read: (name, callback)=>
+      User.find name, (user)->
+        return callback user
+    _update: (req, res)=>
+      attrs =
+        name: req.params.name
+        data: req.body.attrs
+      @update name, data, res.json
+    update: (attr, callback)=>
+
+    _delete: (req, res)=>
+      @delete req.aprams.name, res.json
+    delete: (attr, callback)=>
+      User.find attrs.name, (user)->
+        status = false
+        if user
+          user.remove()
+          status = true
+        callback status
+
+  Group:
+    _create: (req, res)=>
+      attrs =
+        name: req.body.name
+        owner: req.body.owner
+      @create attrs , res.json
+    create: (attrs, callback)=>
+      Group.create attrs.name, attrs.owner, (result)->
+        
+    _read: (req, res)=>
+      name = req.params.name
+      @read name, res.json
+    read: (name, callback)=>
+      Group.find name, (result)->
+        return callback result
+    _update: (req, res)=>
+    update: (name, attr)=>
+    _delete: (req, res)=>
+    delete: (name)=>
+
+
+class BBObject
   data: {}
+  __data: {}
+  constructor: ->
+
+  save: (callback)->
+    if !@data? or !@__data?
+      error = new Error "data is undefined"
+      callback error, null
+    else
+      @data.save (err)=>
+        if err
+          @data = @__data
+          error = new Error "save error"
+          callback.call @, err
+        else
+          @__data = _.clone @data
+          callback.call @, null
+
+  set: (key, value)->
+    if !(typeof key is 'string') and !(typeof key is 'number')
+      throw new Error "key should be String or Number"
+    @data[key] = value
+
+  get: (key)->
+    if (typeof key isnt "string") and (typeof key isnt 'number')
+      throw new Error "key should be String or Number"
+    return @data[key]
+
+
+class User extends BBObject
+  isAuthenticate: false
+  username: ""
+  password: ""
+  groups: []
+  devices: []
+
   constructor: ->
 
   @find = (username, callback)->
-    throw Error "username is undefined" if !username
+    throw new Error "username is undefined" if !username
     u = new User()
     UserModel.findOne {username: username}, (err, user)=>
       throw err if err
-      u.data = user
-      return callback null if !user
-      return callback u
+      if !user
+        error = new Error "user not found"
+        return callback error, null
+      else
+        u.data = user
+        u.__data = _.clone u.data
+        u.isAuthenticate = false
+        return callback.call u, null, u
 
   @authenticate = (username, password,callback)->
-    throw Error "username is undefined" if !username
-    throw Error "password is undefined" if !password
+    throw new Error "username is undefined" if !username
+    throw new Error "password is undefined" if !password
     UserModel.findOne {username: username, password: password}, (err, user)=>
       throw err if err
+      return callback null if !user
       u = new User()
       u.isAuthenticate = true
       u.data = user
-      return callback null if !user
+      u.__data = _.clone u.data
       return callback u
 
-  @create = (username, password,callback)->
-    throw Error "username or password is undefined" if !username or !password
+  @create = (username, password, callback)->
+    throw new Error "username is undefined" if !username
+    throw new Error "password is undefined" if !password
     UserModel.findOne {username: username}, (err, user)->
       throw err if err
-      return callback false if !user
-      u = new User()
-      pass = Crypto.createHash("sha256").update(password).digest("hex")
-      u.data = new UserModel()
-      u.data.username = username
-      u.data.password = pass
-      callback u
+      if user
+        error = new Error "already user exist"
+        callbacl.call user, error, user
+      else
+        u = new User()
+        pass = Crypto.createHash("sha256").update(password).digest("hex")
+        u.data = new UserModel()
+        u.data.username = username
+        u.data.password = pass
+        u.isAuthenticate = true
+        u.save (err)=>
+          callback.call u, err, u
 
-  authenticate: (username, password,callback)->
-    throw Error "username is undefined" if !username
-    throw Error "password is undefined" if !password
-    UserModel.findOne {username: username, password: password}, (err, user)=>
+  authenticate: (password,callback)->
+    username = @get("username")
+    throw new Error "username is undefined" if !username?
+    throw new Error "password is undefined" if !password?
+    p = Crypto.createHash("sha256").update(password).digest("hex")
+    UserModel.findOne {username: username, password: p}, (err, user)=>
       throw err if err
+      return callback false if !user?
       @isAuthenticate = true
-      return callback false if !user
-      return callback @
+      callback.call @, @isAuthenticate
 
   save: (callback)->
-    @data.save (err)=>
+    if !@isAuthenticate
+      error = new Error "ERROR: user isn't authenticated"
+      @data = @__data
+      return callback.call @, error
+    super callback
+  #   if !@isAuthenticate
+  #     @data = @__data
+  #     return callback.call @, false
+  #   @data.save (err)=>
+  #     if err
+  #       @data = @__data
+  #       callback.call @, err
+  #     else
+  #       @__data = @data
+  #       callback.call @, null
+
+  # set: (name, data)->
+  #   return false if !data?
+  #   @data[name] = data
+
+  # get: (name)->
+  #   return @data[name]
+
+  delete: (username, password, callback)->
+    return callback false if !@isAuthenticate
+    p = Crypto.createHash("sha256").update(password).digest("hex")
+    UserModel.findOne {username: username, password: p}, (err, user)->
       throw err if err
-      callback @
-
-  set: (name, data)->
-    @data[name] = data
-
-  get: (name)->
-    return @data[name]
+      console.log user
+      return callback false if !user?
+      user.remove()
+      user.save (err)->
+        callback true
 
   addGroup: (name, callback)->
     return callback false if !@data
@@ -154,31 +382,64 @@ class User
         throw err if err
         callback true
 
-class Group
+  changePassword: (newpassword, callback)->
+    return callback false if !@isAuthenticate
+    return callback false if !@data?
+    p = Crypto.createHash("sha256").update(newpassword).digest "hex"
+    @data.password = p
+    @data.save (err)->
+      throw err if err
+      callback true
+
+  changeTwitterAccount: (newAccount, callback)->
+    return callback false, null if !@isAuthenticate
+    username = @get "username"
+    @set "twitter", newAccount
+    @save (user)->
+      callback true, user
+
+  changeMailAddress: (newAddress, callback)->
+    return callback false, null if !@isAuthenticate
+    @set "mail", newAddress
+    @save (user)->
+      callback true, user
+
+class Group extends BBObject
   data: {}
+  __data: {}
   constructor: ->
 
-  @create = (name, callback)->
-    throw Error "name is undefined" if !name
-    GroupModel.findOne {name: name}, (err, group)->
+  @create = (attrs, callback)->
+    throw new Error "name is undefined" if !attrs.name
+    throw new Error "owner is undefined" if !attrs.owner
+    GroupModel.findOne {name: attrs.name}, (err, group)=>
       throw err if err
-      return callback false if group
+      if group
+        error = new Error "group is existed"
+        return callback.call group, error, group if group
       group = new Group()
       group.data = new GroupModel()
-      group.data.name = name
-      return group
+      group.data.name = attrs.name
+      group.data.owners.push attrs.owner.data._id
+      group.data.members = []
+      if attrs.members
+        for member in attrs.members
+          group.data.members.push member._id
+      group.save ->
+        return callback.call group, null, group
 
-  @find = (name, callback)->
-    throw Error "name is undefined" if !name
-    g = new Group()
+  @find = (attrs, callback)->
+    name = attrs.name
+    throw new Error "name is undefined" if !name
     GroupModel.findOne {name: name}, (err, group)->
       throw err if err
+      if !group
+        error = new Error "group not found"
+        return callback error, null
+      g = new Group()
       g.data = group
-      return callback null if !group
-      return callback g
-
-  get: (name)->
-    return @data[name]
+      g.__data = _.clone g.data
+      return callback.call g, null, g
 
   fetch: (callback)->
     return false if !@groupname or !@data
@@ -196,32 +457,40 @@ class Group
       group.remove()
       callback true
 
-  save: (callback)->
-    @data.save (err)=>
+  addMembers: (names, callback)->
+    UserModel.find {username: {$in: names}}, (err, users)=>
       throw err if err
-      callback @
+      return callback null if !users
+      ids = _.pluck users, "_id"
+      members = _.pluck @data.members, "_id"
+      newMembers = _.union ids, @data.members
 
-  addMember: (name, callback)->
-    throw Error "name is undefined" if !name
-    UserModel.findOne {username: name}, (err, user)=>
+  addMember: (user, callback)->
+    throw new Error "arg[0] user is undefined" if !user
+    id = user.get "_id"
+    UserModel.findById id, (err, user)=>
       throw err if err
       return callback null if !user
       member = _.find @data.members, (m)->
         return m.toString() is user._id.toString()
-      @data.members.push user._id if !member
+      @data.members.push id if !member
       @data.save (err)=>
-        throw err if err
+        return callback err, null if err
         id = @data._id
         group = _.find user.groups, (group)->
           return group.toString() is id
         user.groups.push id if !group
-        user.save (err)->
-          throw err if err
-          callback @data
+        user.save (err)=>
+          return callback err, null if err
+          GroupModel.populate @data, {path: 'members'}, (err, group)=>
+            @data = group
+            @__data = _.clone @data
+            callback.call @, null, @
 
-  removeMember: (name, callback)->
-    throw Error "name is undefined" if !name
-    UserModel.findOne {username: name}, (err, user)=>
+  removeMember: (user, callback)->
+    throw new Error "arg[0] user is undefined" if !user
+    id = user.get "_id"
+    UserModel.findById id, (err, user)=>
       throw err if err
       return callback null if !user
       flag = false
@@ -229,17 +498,18 @@ class Group
         if @data.members[i].toString() is user._id.toString()
           @data.members.splice i, 1
           break
-      data = @data
-      @data.save (err)->
+      @data.save (err)=>
         throw err if err
-        console.log "save!"
         for i in [0..user.groups.length-1]
-          if user.groups[i].toString() is data._id.toString()
+          if user.groups[i].toString() is @data._id.toString()
             user.groups.splice i, 1
             break
-        user.save (err)->
+        user.save (err)=>
           throw err if err
-          callback data
+          GroupModel.populate @data, {path: "members"}, (err, group)=>
+            @data = group
+            @__data = _.clone @data
+            callback.call @, null, @
 
   getMembers: (callback)->
     q = GroupModel.findOne({name: @data.name})
@@ -251,11 +521,14 @@ class Group
 UserModel = mongoose.model "user", new mongoose.Schema
   username: type: String
   password: type: String
+  twitter: type: String
+  mail: type: String
   device: type: {type: mongoose.Schema.Types.ObjectId, ref: "device"}
   groups: type: [{type: mongoose.Schema.Types.ObjectId, ref: "group"}]
 
 GroupModel = mongoose.model "group", new mongoose.Schema
   name: type: String
+  owners: type: [{type: mongoose.Schema.Types.ObjectId, ref: "user"}]
   members: type: [{type: mongoose.Schema.Types.ObjectId, ref: "user"}]
 
 DeviceModel = mongoose.model "device", new mongoose.Schema
@@ -268,4 +541,4 @@ DeviceModel = mongoose.model "device", new mongoose.Schema
 module.exports =
   User: User
   Group: Group
-  Manager: Manager
+  Manager: new Manager()

@@ -1,15 +1,7 @@
 Baba = require "../../lib/main"
 
-members = new Baba.Script "baba"
-
-id = members.てすと (result)->
-  if result.value is "cancel"
-    console.log "cancel..."
-  else
-    console.log result.value
-b = members.ほげふが (result)->
-  console.log result.value
-
+manager = new Baba.Manager "masuilab"
+members = new Baba.Script manager
 
 members.発表はありますか {broadcast: "all"}, (results)->
   presenters = _.filter results, (r)->
@@ -19,7 +11,18 @@ members.発表はありますか {broadcast: "all"}, (results)->
     presnter = presenters.pop()
     presenter.登壇してください (result)->
       cid = setTimeout ->
-        presenters.終了です()
+        pid = presenter.終了です {format: "void"}
+        psid = presenters.質疑応答の準備をしてください {broadcast: "all", format: "void"}
+        presenters.質疑は終わりましたか (result)->
+          if result.value
+            presenter.cancel pid
+            presenters.cancel psid
+            agenda()
+          else
+            presenters.質疑は終わりましたか arguments.callee
+        members.cancel id
       , 1000*60*60
-      members.質問を入力してください {broadcast: "all", format: "string"}, (result)->
+      id = members.質問を入力してください {broadcast: "all", format: "string"}, (result)->
+        return if result.value is "cancel"
         questions.push result.value
+        id = members.質問を入力してください {broadcast: "all", format: "string"}, arguments.callee

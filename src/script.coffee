@@ -1,4 +1,5 @@
 mm = require "methodmissing"
+http = require 'http'
 EventEmitter = require("EventEmitter2").EventEmitter2
 LindaSocketIOClient = require("linda-socket.io").Client
 SocketIOClient = require "socket.io-client"
@@ -6,8 +7,7 @@ moment = require "moment"
 sys = require "sys"
 _ = require "underscore"
 async = require "async"
-VC = require "../lib/vc"
-# Manager = require "./manager"
+ManagerClient = require "../lib/managerclient"
 
 class Script extends EventEmitter
   linda: null
@@ -18,7 +18,7 @@ class Script extends EventEmitter
 
   constructor: (_id)->
     socket = SocketIOClient.connect @api
-    if _id instanceof VC
+    if _id instanceof ManagerClient
       @id = _id.groupName
     else
       @id = _id
