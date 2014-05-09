@@ -10,12 +10,13 @@ Manager = Baba.Manager.Manager
 _    = require "underscore"
 http = require 'http'
 url = require 'url'
+express = require 'express'
 
 test_name = "baba_test_#{Date.now()}"
 test_pass = "hoge_fuga_#{Date.now()}"
 test_group_name = "test_group_#{Date.now()}"
 
-describe "manager test", ->
+describe "manager program test", ->
 
   it "manager create", (done)->
     assert.notEqual Manager, null
@@ -208,3 +209,13 @@ describe "manager test", ->
           group.delete  test_group_name, user, (result)->
             assert.ok result
             done()
+
+app = express()
+server = app.listen 3030
+io = require('socket.io').listen server
+
+describe "manager app test", ->
+
+  it "attach", (done)->
+    Manager.attach io, server, app
+    done()  
