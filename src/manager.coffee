@@ -50,7 +50,7 @@ class Manager
   constructor: ->
     mongoose.connect "mongodb://localhost/babascript/manager"
 
-  attach: (@io, @server)->
+  attach: (@io, @server, @app)->
     # for http.createServer
     @linda = Linda.listen {io: io, server: server}
     @linda.io.on "connection", (socket)=>
@@ -58,20 +58,15 @@ class Manager
       socket.on "__linda_write", @Socket.write
       socket.on "__linda_take", @Socket.take
       socket.on "__linda_cancel", @Socket.cancel
-    if @server instanceof http.Server
-      @server.on 'request', (req, res)->
-      if req.pathname.match /\/api\/user\/*/
-        console.log "user"
-    else
-      @app.post "/api/user/new", @User._create
-      @app.get  "/api/user/:name", @User._read # 一部login
-      @app.put  "/api/user/:name", @User._update # login
-      @app.delete "/api/user/:name", @User._delete # login
+    @app.post "/api/user/new", @User._create
+    @app.get  "/api/user/:name", @User._read # 一部login
+    @app.put  "/api/user/:name", @User._update # login
+    @app.delete "/api/user/:name", @User._delete # login
 
-      @app.post "/api/group/new", @Group._create # login
-      @app.get  "/api/group/:name", @Group._read # login
-      @app.put  "/api/group/:name", @Group._update # owner only
-      @app.delete "/api/group/:name", @Group._delete # owner only
+    @app.post "/api/group/new", @Group._create # login
+    @app.get  "/api/group/:name", @Group._read # login
+    @app.put  "/api/group/:name", @Group._update # owner only
+    @app.delete "/api/group/:name", @Group._delete # owner only
 
   # return status, user
   createUser: (attrs, callback)->
@@ -127,7 +122,8 @@ class Manager
         data = if user? then {status: false} else {status: true, user: user}
         callback data
     _read: (req, res)=>
-      @read req.params.name, res.json
+      console.log @User
+      @User.read req.params.name, res.json
     read: (name, callback)=>
       User.find name, (user)->
         return callback user
