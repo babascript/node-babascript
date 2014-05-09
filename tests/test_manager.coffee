@@ -11,11 +11,6 @@ _    = require "underscore"
 http = require 'http'
 url = require 'url'
 
-server = http.createServer (req, res)->
-  if url.parse(decodeURI(req.url), true) is "/"
-    res.writeHead 200
-    res.end 'babacscript manager test server'
-
 test_name = "baba_test_#{Date.now()}"
 test_pass = "hoge_fuga_#{Date.now()}"
 test_group_name = "test_group_#{Date.now()}"
@@ -30,37 +25,38 @@ describe "manager test", ->
     attrs =
       username: test_name
       password: test_pass
-    Manager.createUser attrs, (status, user)->
-      assert.ok status
+    Manager.createUser attrs, (err, user)->
+      assert.equal err, null
       assert.ok user instanceof User
+      username = user.get("username")
       assert.equal test_name, user.get "username"
       p = Crypto.createHash("sha256").update(test_pass).digest("hex")
       assert.equal p, user.get("password")
       done()
 
   it "User get", (done)->
-    Manager.getUser test_name, (user)->
+    Manager.getUser test_name, (err, user)->
+      assert.equal err, null
       assert.ok user instanceof User
       assert.equal test_name, user.get('username')
       done()
 
   it "User authenticate", (done)->
-    Manager.getUser test_name, (user)->
+    Manager.getUser test_name, (err, user)->
       user.authenticate test_pass, (result)->
-        console.log result
         assert.ok result
         assert.ok user.isAuthenticate
         done()
 
   it "User authenticate fail", (done)->
-    Manager.getUser test_name, (user)->
+    Manager.getUser test_name, (err, user)->
       user.authenticate test_pass+"010101001", (result)->
         assert.ok !result
         assert.ok !user.isAuthenticate
         done()
 
   it "User password modify", (done)->
-    Manager.getUser test_name, (user)->
+    Manager.getUser test_name, (err, user)->
       user.authenticate test_pass, (result)->
         assert.ok result
         oldpass = user.get "password"
@@ -75,7 +71,7 @@ describe "manager test", ->
           done()
 
   it "User password modify fail", (done)->
-    Manager.getUser test_name, (user)->
+    Manager.getUser test_name, (err, user)->
       p = test_pass+"hogefugahogefuga"
       user.authenticate p, (result)->
         assert.ok !result
@@ -84,55 +80,63 @@ describe "manager test", ->
           assert.ok !result
           done()
 
-  it "User twitter account modify", (done)->
+  it "attributes: User twitter account modify", (done)->
     twittername = "takumibaba"
-    Manager.getUser test_name, (user)->
+    Manager.getUser test_name, (err, user)->
       user.authenticate test_pass, (result)->
         assert.ok result
-        user.changeTwitterAccount twittername, (u)=>
-          assert.equal user.get("twitter"), twittername
+        user.set "twitter", twittername
+        user.save (err)->
+          assert.equal @get("twitter"), twittername
+          assert.equal @get("username"), test_name
           done()
 
-  it "get user's twitter account", (done)->
-    Manager.getUser test_name, (user)->
+  it "attributes: get user's twitter account", (done)->
+    Manager.getUser test_name, (err, user)->
       account = user.get "twitter"
       assert.equal account, "takumibaba"
       done()
 
-  it "User twitter account modify fail", (done)->
+  it "attributes: User twitter account modify fail", (done)->
     twittername = "takumibaba12"
-    Manager.getUser test_name, (user)->
-      user.changeTwitterAccount twittername, (result, user)->
-        assert.ok !result
-        assert.equal user, null
+    Manager.getUser test_name, (err, user)->
+      user.set "twitter", twittername
+      user.save (err)->
+        assert.ok err instanceof Error
+        assert.equal "takumibaba", @get "twitter"
         done()
 
-  it "User mail address modify", (done)->
+  it "attributes: User mail address modify", (done)->
     mailaddress = "mail@babascript.org"
-    Manager.getUser test_name, (user)->
+    Manager.getUser test_name, (err, user)->
       user.authenticate test_pass, (result)->
         assert.ok result
-        user.changeMailAddress mailaddress, (result, user)->
-          assert.ok result
-          assert.equal user.get("mail"), mailaddress
+        user.set "mail", mailaddress
+        user.save (err)->
+          assert.equal err, null
+          m = @get "mail"
+          assert.equal m, mailaddress
+          assert.ok @ instanceof User
           done()
 
-  it "get user's mail account", (done)->
-    Manager.getUser test_name, (user)->
+  it "attributes: get user's mail account", (done)->
+    Manager.getUser test_name, (err, user)->
       mail = user.get "mail"
       assert.equal mail, "mail@babascript.org"
       done()
 
-  it "mail address modify failed", (done)->
+  it "attributes: mail address modify failed", (done)->
     mailaddress = "mail22@babascript.org"
-    Manager.getUser test_name, (user)->
-      user.changeMailAddress mailaddress, (result, user)->
-        assert.ok !result
-        assert.equal user, null
+    Manager.getUser test_name, (err, user)->
+      user.set "mail", mailaddress
+      user.save (err)->
+        assert.ok err instanceof Error
+        assert.equal @, user
+        assert.ok @ instanceof User
         done()
 
   it "manager-user delete", (done)->
-    Manager.getUser test_name, (user)->
+    Manager.getUser test_name, (err, user)->
       user.authenticate test_pass, (result)->
         assert.ok result
         name = user.get "username"
@@ -140,46 +144,60 @@ describe "manager test", ->
         assert.equal name, user.get('username')
         user.delete name, test_pass, (result)->
           assert.ok result
-          Manager.getUser test_name, (user)->
+          Manager.getUser test_name, (err, user)->
             assert.equal user, null 
             done()
 
   it "create new group", (done)->
-    Manager.createUser {username: test_name, password: test_pass}, (user)->
+    Manager.createUser {username: test_name, password: test_pass}, (err, user)->
       attrs =
         name: test_group_name
         owner: user
         members: user
       assert.ok user instanceof User
-      Manager.createGroup attrs, (group)->
+      Manager.createGroup attrs, (status, group)->
         assert.ok group instanceof Group
-        console.log group
         assert.equal group.get("name"), test_group_name
-        assert.equal group.get("owner")[0], user
+        assert.equal group.get("owners").shift(), user.get "_id"
         done()
 
   it "get group", (done)->
-    done()
+    Manager.getGroup {name: test_group_name}, (err, group)->
+      assert.equal err, null
+      assert.ok group instanceof Group
+      name = group.get "name"
+      assert.equal name, test_group_name
+      done()
 
-  it "check new group's owner", (done)->
-    done()
+  it "add group's member", (done)->
+    Manager.getGroup {name: test_group_name}, (err, group)->
+      assert.equal err, null
+      assert.equal 0, group.get("members").length
+      Manager.getUser test_name, (err, user)->
+        user.authenticate test_pass, (result)->
+          assert.ok result 
+          group.addMember user, (err, group)->
+            assert.equal err, null
+            assert.ok group instanceof Group
+            members = group.get "members"
+            assert.equal 1, members.length
+            assert.equal user.get("username"), members[0].username
+            done()
 
-  it "get group's name", (done)->
-    done()
+  it "remove group's member", (done)->
+    Manager.getGroup {name: test_group_name}, (err, group)->
+      assert.equal err, null
+      Manager.getUser test_name, (err, user)->
+        group.removeMember user, (err, group)->
+          assert.equal err, null
+          assert.ok group instanceof Group
+          members = group.get "members"
+          assert.equal 0, members.length
+          assert.equal null, members[0]
+          done()
 
-  it "add groups member", (done)->
-    done()
-
-  it "add groups members", (done)->
-    done()
-
-  it "check groups members", (done)->
-    done()
-
-  it "remove groups member", (done)->
-    done()
-
-  it "delete groups", (done)->
+  it "delete group's", (done)->
+    return done()
     Manager.getGroup test_group_name, (group)->
       assert.ok group instanceof Group
       name = gruop.get "name"
@@ -190,59 +208,3 @@ describe "manager test", ->
           group.delete  test_group_name, user, (result)->
             assert.ok result
             done()
-
-
-  # it "manager-user find", (done)->
-  #   name = "baba"
-  #   Manager.getUser
-  #   Manager.User.read name, (user)->
-  #     username = user.get "username"
-  #     assert.ok user instanceof User
-  #     assert.equal name, username
-  #     done()
-
-  
-  # it "manager-user delete", (done)->
-  #   name = "baba_test"
-  #   pass = "hogefuga"
-  #   Manager.User.delete 
-
-  # it "user create", (done)->
-  #   username = "baba"
-  #   password = "takumi"
-
-
-  # it "user create", (done)->
-  #   username = "baba"
-  #   password = "takumi"
-  #   User.create username, password, (user)->
-  #     assert.equal user instanceof User, true
-  #     assert.equal user.get("username"), username
-  #     user.save (data)->
-  #       User.find "baba", (u)->
-  #         assert.equal u.get("username"), user.get("username")
-  #         # assert.equal u.get("id"), user.get("id")
-  #         done()
-
-  # it "group create", (done)->
-  #   name = "test_masuilab_group"
-  #   Group.create name, (group)->
-  #     assert.equal group instanceof Group, true
-  #     assert.equal group.get("name"), name
-  #     assert.equal group.getMembers().length, 0
-  #     done()
-
-  # it "group name", (done)->
-  #   name = "test_masuilab_group"
-  #   Group.find name, (group)->
-  #     assert.equal group instanceof Group, true
-  #     assert.equal group.get("name"), name
-  #     done()
-
-  # it "group remove", (done)->
-  #   name = "test_masuilab_group"
-  #   Group.find name, (group)->
-  #     assert.equal group instanceof Group, true
-  #     group.delete (result)->
-  #       assert.equal result, true
-  #       done()
