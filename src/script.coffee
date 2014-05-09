@@ -1,4 +1,5 @@
 mm = require "methodmissing"
+http = require 'http'
 EventEmitter = require("EventEmitter2").EventEmitter2
 LindaSocketIOClient = require("linda-socket.io").Client
 SocketIOClient = require "socket.io-client"
@@ -14,9 +15,6 @@ class Script extends EventEmitter
   defaultFormat: "boolean"
   api: "http://linda.babascript.org"
   # api: "http://localhost:3000"
-
-  @create = (id)->
-    return new Script id
 
   constructor: (_id)->
     socket = SocketIOClient.connect @api
