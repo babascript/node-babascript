@@ -51,7 +51,9 @@ class Manager
     mongoose.connect "mongodb://localhost/babascript/manager"
 
   attach: (@io, @server, @app)->
-    # for http.createServer
+    throw new Error "io not found" if !@io?
+    throw new Error "server not found" if !@server?
+    throw new Error "app not found" if !@app?
     @linda = Linda.listen {io: io, server: server}
     @linda.io.on "connection", (socket)=>
       socket.on "disconnect", @Socket.disconnect
