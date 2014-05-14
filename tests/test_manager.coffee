@@ -143,10 +143,11 @@ describe "manager program test", ->
         name = user.get "username"
         assert.ok user instanceof User
         assert.equal name, user.get('username')
-        user.delete name, test_pass, (result)->
+        user.delete (err, result)->
+          assert.equal err, null
           assert.ok result
           Manager.getUser test_name, (err, user)->
-            assert.equal user, null 
+            assert.equal user, null
             done()
 
   it "create new group", (done)->
@@ -176,7 +177,7 @@ describe "manager program test", ->
       assert.equal 0, group.get("members").length
       Manager.getUser test_name, (err, user)->
         user.authenticate test_pass, (result)->
-          assert.ok result 
+          assert.ok result
           group.addMember user, (err, group)->
             assert.equal err, null
             assert.ok group instanceof Group
@@ -199,23 +200,81 @@ describe "manager program test", ->
 
   it "delete group's", (done)->
     return done()
-    Manager.getGroup test_group_name, (group)->
+    Manager.getGroup {name: test_group_name}, (err, group)->
       assert.ok group instanceof Group
-      name = gruop.get "name"
+      name = group.get "name"
       assert.equal name, test_group_name
       Manager.getUser test_name, (user)->
         user.authenticate test_pass, (result)->
           assert.ok result
-          group.delete  test_group_name, user, (result)->
+          group.delete test_group_name, user, (result)->
             assert.ok result
-            done()
+            user.delete (err, result)->
+              assert.equal err, null
+              assert.ok result
+              done()
 
 app = express()
+app.use (require "body-parser")()
+app.use (require "method-override")()
+app.use (req, res, next)->
+  app.locals.req = req
+  return next null
 server = app.listen 3030
 io = require('socket.io').listen server
+name = test_name+"11"
+request = require 'request'
+api = require("supertest")(app)
 
 describe "manager app test", ->
 
+  # before (done)->
+  #   Manager.createUser {username: name, password: test_pass}, (err, user)->
+  #     attrs =
+  #       name: test_group_name
+  #       owner: user
+  #       members: user
+  #     Manager.createGroup attrs, (err, group)->
+  #       done()
+
   it "attach", (done)->
     Manager.attach io, server, app
-    done()  
+    done()
+
+  it "POST /api/user/new", (done)->
+    data = {username: name, password: test_pass}
+    api.post("/api/user/new").send(data).expect(200)
+    .expect('Content-Type', /json/).end (err, res)->
+      assert.equal err, null
+      assert.notEqual res, null
+      done()
+
+  it "POST /api/user/new fail", (done)->
+    data = {usernme: name}
+    api.post("/api/user/new").send(data).expect(500).end done
+
+  it "GET /api/user/:name", (done)->
+    api.get("/api/user/#{name}").expect(200)
+    .end (err, res)->
+      assert.equal err, null
+      assert.equal res.get "username", name
+      done()
+
+  it "PUT /api/user/:name", (done)->
+    api.put("/api/user/#{name}").send().expect(200)
+    done()
+
+  it "DELETE /api/user/:name", (done)->
+    done()
+
+  it "POST /api/group/new", (done)->
+    done()
+
+  it "GET /api/group/:name", (done)->
+    done()
+
+  it "PUT /api/group/:name", (done)->
+    done()
+
+  it "DELETE /api/user/:name", (done)->
+    done()
