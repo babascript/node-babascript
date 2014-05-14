@@ -1,4 +1,5 @@
 mongoose = require "mongoose"
+mongoose.connect "mongodb://localhost/babascript/manager"
 _ = require "underscore"
 Crypto = require "crypto"
 LindaSocketIO = require("linda-socket.io")
@@ -48,7 +49,6 @@ TupleSpace = LindaSocketIO.TupleSpace
 # この3種が接続する。
 class Manager
   constructor: ->
-    mongoose.connect "mongodb://localhost/babascript/manager"
 
   attach: (@io, @server, @app)->
     throw new Error "io not found" if !@io?
@@ -60,9 +60,17 @@ class Manager
       socket.on "__linda_write", @Socket.write
       socket.on "__linda_take", @Socket.take
       socket.on "__linda_cancel", @Socket.cancel
-    @app.post "/api/user/new", @User._create
-    @app.get  "/api/user/:name", @User._read # 一部login
-    @app.put  "/api/user/:name", @User._update # login
+    @app.post "/api/user/new", (req, res, next)=>
+      username = req.param "username"
+      password = req.param "password"
+      attrs = {username: username, password: password}
+      @createUser attrs, (err, user)=>
+        res.json user
+    @app.get  "/api/user/:name", (req, res, next)=>
+      @getUser req.params.name, (err, user)=>
+        res.json user
+    @app.put  "/api/user/:name", (req, res, next)=>
+      
     @app.delete "/api/user/:name", @User._delete # login
 
     @app.post "/api/group/new", @Group._create # login
@@ -123,12 +131,17 @@ class Manager
       User.create attrs.name, attrs.password, (user)->
         data = if user? then {status: false} else {status: true, user: user}
         callback data
-    _read: (req, res)=>
-      console.log @User
-      @User.read req.params.name, res.json
-    read: (name, callback)=>
-      User.find name, (user)->
-        return callback user
+    _read: (req, res)->
+      Manager.getUser req.params.name, (err, user)->
+        console.log "get user!!"
+        console.log user
+        res.json user
+    read: (req, res)=>
+      @getUser req.params.name, (err, user)->
+        res.json {err: err, user: user}
+      # @getUser name, (err, user)->
+      # User.find name, (user)->
+      #   return callback user
     _update: (req, res)=>
       attrs =
         name: req.params.name
@@ -154,7 +167,7 @@ class Manager
       @create attrs , res.json
     create: (attrs, callback)=>
       Group.create attrs.name, attrs.owner, (result)->
-        
+
     _read: (req, res)=>
       name = req.params.name
       @read name, res.json
@@ -239,7 +252,7 @@ class User extends BBObject
       throw err if err
       if user
         error = new Error "already user exist"
-        callbacl.call user, error, user
+        callback.call user, error, user
       else
         u = new User()
         pass = Crypto.createHash("sha256").update(password).digest("hex")
@@ -285,16 +298,22 @@ class User extends BBObject
   # get: (name)->
   #   return @data[name]
 
-  delete: (username, password, callback)->
-    return callback false if !@isAuthenticate
-    p = Crypto.createHash("sha256").update(password).digest("hex")
-    UserModel.findOne {username: username, password: p}, (err, user)->
+  # delete: (username, password, callback)->
+  #   return callback false if !@isAuthenticate
+  #   p = Crypto.createHash("sha256").update(password).digest("hex")
+  #   UserModel.findOne {username: username, password: p}, (err, user)->
+  #     throw err if err
+  #     console.log user
+  #     return callback false if !user?
+  #     user.remove()
+  #     user.save (err)->
+  #       callback true
+
+  delete: (callback)->
+    return callback new Error("not authenticated"), false if !@isAuthenticate
+    @data.remove (err, user)->
       throw err if err
-      console.log user
-      return callback false if !user?
-      user.remove()
-      user.save (err)->
-        callback true
+      callback null, true
 
   addGroup: (name, callback)->
     return callback false if !@data
