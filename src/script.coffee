@@ -14,7 +14,6 @@ class Script extends EventEmitter
   isProcessing: false
   defaultFormat: "boolean"
   api: "http://linda.babascript.org"
-  # api: "http://localhost:3000"
 
   constructor: (_id)->
     socket = SocketIOClient.connect @api
