@@ -11,6 +11,9 @@ _    = require "underscore"
 http = require 'http'
 url = require 'url'
 express = require 'express'
+session = require 'express-session'
+passport = require "passport"
+MongoStore = require("connect-mongo")(session)
 
 test_name = "baba_test_#{Date.now()}"
 test_pass = "hoge_fuga_#{Date.now()}"
@@ -220,61 +223,114 @@ app.use (require "method-override")()
 app.use (req, res, next)->
   app.locals.req = req
   return next null
+app.use require("cookie-parser")()
+
+app.use (req, res, next)->
+  headers = "Content-Type, Authorization, Content-Length, X-Requested-With, Origin"
+  res.setHeader "Access-Control-Allow-Origin", "*"
+  res.setHeader "Access-Control-Allow-Credentials", true
+  res.setHeader "Access-Control-Allow-Methods", "POST, PUT, GET, DELETE, OPTIONS"
+  res.setHeader "Access-Control-Request-Method", "POST, PUT, GET, DELETE, OPTIONS"
+  res.setHeader "Access-Control-Allow-Headers", headers
+  next()
+
+app.use session
+  secret: "session:hogefuga"
+  key: "sessionID"
+  cookie:
+    secure: true
+    httpOnly: false
+    maxAge: 1000*60*60*24*7
 server = app.listen 3030
 io = require('socket.io').listen server
 name = test_name+"11"
 request = require 'request'
-api = require("supertest")(app)
+supertest = require "supertest"
+api = null
+cookie = null
+sessionID = ""
 
 describe "manager app test", ->
 
-  # before (done)->
-  #   Manager.createUser {username: name, password: test_pass}, (err, user)->
-  #     attrs =
-  #       name: test_group_name
-  #       owner: user
-  #       members: user
-  #     Manager.createGroup attrs, (err, group)->
-  #       done()
+  before (done)->
+    Manager.createUser {username: name, password: test_pass}, (err, user)->
+      attrs =
+        name: test_group_name
+        owner: user
+        members: user
+      Manager.createGroup attrs, (err, group)->
+        done()
+  after (done)->
+    done()
 
   it "attach", (done)->
     Manager.attach io, server, app
+    # assert.ok io instanceof Socket.IO.clien
+    # assert.ok server instanceof http.Server
+    # assert.ok app instanceof express
+    api = supertest.agent app
     done()
 
-  it "POST /api/user/new", (done)->
-    data = {username: name, password: test_pass}
-    api.post("/api/user/new").send(data).expect(200)
-    .expect('Content-Type', /json/).end (err, res)->
-      assert.equal err, null
-      assert.notEqual res, null
+  it "Session:login", (done)->
+    p = test_pass+"10101010"
+    data =
+      username: name
+      password: test_pass
+    api.post("/api/session/login").send(data).expect(302).end (err, res)->
+      console.log res
+      assert.equal res.header.location, "/"
+      cookie = res.header['set-cookie']
+      console.log cookie
       done()
+
+  it "Session isLogin?", (done)->
+    api.get("/api/session").expect(200).end done
+
+  it "POST /api/user/new", (done)->
+    data = {username: name+"9898", password: test_pass+"9898"}
+    api.post("/api/user/new").send(data).expect(200).end done
 
   it "POST /api/user/new fail", (done)->
     data = {usernme: name}
     api.post("/api/user/new").send(data).expect(500).end done
 
   it "GET /api/user/:name", (done)->
-    api.get("/api/user/#{name}").expect(200)
+    n = name + "9898"
+    api.get("/api/user/#{n}").expect(200)
     .end (err, res)->
       assert.equal err, null
-      assert.equal res.get "username", name
+      assert.equal res.body.data.username, name+"9898"
       done()
 
-  it "PUT /api/user/:name", (done)->
-    api.put("/api/user/#{name}").send().expect(200)
-    done()
+  it "GET /api/user/:name fail", (done)->
+    n = name+"fail"
+    api.get("/api/user/#{n}").expect(500).end(done)
 
-  it "DELETE /api/user/:name", (done)->
-    done()
+  # it "PUT /api/user/:name change mail addres", (done)->
+  #   data =
+  #     mailaddress: "test@babascript.org"
+  #   api.put("/api/user/#{name}").send(data).expect(200).end done
 
-  it "POST /api/group/new", (done)->
-    done()
+  # it "PUT /api/user/:name change your password", (done)->
+  #   api.put("/api/user/#{name}").send().expect(200).end(done)
 
-  it "GET /api/group/:name", (done)->
-    done()
+  # it "DELETE /api/user/:name", (done)->
+  #   api.delete("/api/user/#{name}").send().expect(200).end(done)
 
-  it "PUT /api/group/:name", (done)->
-    done()
+  # it "POST /api/group/new", (done)->
+  #   api.post("/api/group/new").send().expect(200).end(done)
 
-  it "DELETE /api/user/:name", (done)->
-    done()
+  # it "GET /api/group/:name", (done)->
+  #   done()
+
+  # it "PUT /api/group/:name", (done)->
+  #   api.put("/api/group/#{group_name}").send().expect(200).end(done)
+
+  # it "DELETE /api/user/:name", (done)->
+  #   api.delete("/api/group/#{group_name}").send().expect(200).end(done)
+
+  # it "linda-test", (done)->
+  #   done()
+
+  it "Session logout", (done)->
+    api.delete("/api/session/logout").expect(200).end done
