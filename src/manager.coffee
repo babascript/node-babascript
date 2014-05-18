@@ -49,7 +49,7 @@ LocalStrategy = require("passport-local").Strategy
 #     @watch tuple, callback
 
 
-# Manager には、Manage-client と、 babascript と babascriptclient
+# Manager には、Manager-client と、 babascript と babascriptclient
 # この3種が接続する。
 
 class Manager
@@ -95,8 +95,6 @@ class Manager
     @app.post "/api/session/login", (req,res, next)->
       auth(req, res, next)
     @app.get "/api/session", (req, res, next)->
-      # console.log "get!! /api/session"
-      # console.log req
       if req.session.passport.user?
         res.send 200
       else
