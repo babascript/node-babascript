@@ -1,11 +1,11 @@
 {
   "name": "babascript",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "BabaScript for node",
   "main": "./lib/script.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/TakumiBaba/node-babascript"
+    "url": "https://github.com/babascript/node-babascript"
   },
   "scripts": {
     "test": "grunt test"
