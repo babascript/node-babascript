@@ -53,7 +53,7 @@ module.exports = (grunt) ->
         ignoreLeaks: no
         timeout: 10000
       dist:
-        src: [ 'tests/test_manager.coffee' ]
+        src: [ 'tests/testclient.coffee' ]
 
     watch:
       options:
