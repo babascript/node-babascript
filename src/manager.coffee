@@ -5,6 +5,10 @@ Crypto = require "crypto"
 LindaSocketIO = require("linda-socket.io")
 Linda = LindaSocketIO.Linda
 TupleSpace = LindaSocketIO.TupleSpace
+express = require "express"
+passport = require 'passport'
+LocalStrategy = require("passport-local").Strategy
+# MongoStore = require("connect-mongo")(express)
 
 # linda を組み込む
 # localな分散処理機構を組み合わせる
@@ -47,6 +51,7 @@ TupleSpace = LindaSocketIO.TupleSpace
 
 # Manager には、Manage-client と、 babascript と babascriptclient
 # この3種が接続する。
+
 class Manager
   constructor: ->
 
@@ -60,19 +65,66 @@ class Manager
       socket.on "__linda_write", @Socket.write
       socket.on "__linda_take", @Socket.take
       socket.on "__linda_cancel", @Socket.cancel
+    passport.serializeUser (user, done)->
+      console.log "serializeUser"
+      console.log user
+      username = user.get "username"
+      done null, user
+    passport.deserializeUser (username, done)->
+      console.log "deserializeUser"
+      console.log username
+      done err, username
+    passport.use(new LocalStrategy (username, password, done)=>
+      data =
+        username: username
+        password: password
+      @login data, (err, user)=>
+        return done err if err
+        if !user
+          done null, false, {message: "invalid user"}
+        else
+          done null, user
+    )
+    @app.use passport.initialize()
+    @app.use passport.session()
+    auth =
+      passport.authenticate "local",
+        successRedirect: "/"
+        failureRedirect: "/api/session/failure"
+        failureFlash: true
+    @app.post "/api/session/login", (req,res, next)->
+      auth(req, res, next)
+    @app.get "/api/session", (req, res, next)->
+      # console.log "get!! /api/session"
+      # console.log req
+      if req.session.passport.user?
+        res.send 200
+      else
+        res.send 500
+    @app.get "/api/session/success", (req, res, next)->
+      res.send 200
+      return res.end()
+    @app.get "/api/session/failure", (req,res, next)->
+      console.log "failure"
+      res.send 500
     @app.post "/api/user/new", (req, res, next)=>
+      console.log req.body
       username = req.param "username"
       password = req.param "password"
       attrs = {username: username, password: password}
+      console.log attrs
       @createUser attrs, (err, user)=>
-        res.json user
+        throw err if err
+        res.send 200
     @app.get  "/api/user/:name", (req, res, next)=>
       @getUser req.params.name, (err, user)=>
-        res.json user
+        if err
+          res.send 500
+        else
+          res.json 200, user
     @app.put  "/api/user/:name", (req, res, next)=>
-      
+      res.send 200
     @app.delete "/api/user/:name", @User._delete # login
-
     @app.post "/api/group/new", @Group._create # login
     @app.get  "/api/group/:name", @Group._read # login
     @app.put  "/api/group/:name", @Group._update # owner only
@@ -99,7 +151,6 @@ class Manager
     owner = attrs.owner
     return callback false, null if !owner? or !owner.isAuthenticate
     Group.create attrs, (status, group)->
-      console.log group
       if !group?
         return callback false, null
       else
@@ -107,6 +158,11 @@ class Manager
 
   getGroup: (attrs, callback)->
     Group.find attrs, callback
+
+  login: (attrs, callback)->
+    User.login attrs, (err, user)->
+      throw err if err
+      callback null, user
 
   Socket:
     write: (data)=>
@@ -262,6 +318,20 @@ class User extends BBObject
         u.isAuthenticate = true
         u.save (err)=>
           callback.call u, err, u
+
+  @login = (attrs, callback)->
+    username = attrs.username
+    password = attrs.password
+    throw new Error "username is undefined" if !username
+    throw new Error "password is undefined" if !password
+    pass = Crypto.createHash("sha256").update(password).digest("hex")
+    UserModel.findOne {username: username, password: pass}, (err, user)->
+      throw err if err
+      return callback new Error("authenticate failed"), null if !user?
+      u = new User()
+      u.data = user
+      u.isAuthenticate = true
+      callback null, u
 
   authenticate: (password,callback)->
     username = @get("username")
