@@ -9,7 +9,7 @@ _ = require "underscore"
 async = require "async"
 ManagerClient = require "../lib/managerclient"
 
-class Script extends EventEmitter
+module.exports = class Script extends EventEmitter
   linda: null
   isProcessing: false
   defaultFormat: "boolean"
@@ -181,7 +181,7 @@ class Script extends EventEmitter
     #   return new Script worker
     # else
     #   return
-    
+
     # return mm @, (key, args)=>
     #   if typeof args[0] is 'function'
     #     args[1] = args[0]
@@ -189,8 +189,6 @@ class Script extends EventEmitter
     #   args[0].unicast = worker
     #   console.log "hoge"
     #   @methodmissing key, args
-    
+
   callbackId: ->
     return "#{moment().unix()}_#{Math.random(1000000)}"
-
-module.exports = Script
