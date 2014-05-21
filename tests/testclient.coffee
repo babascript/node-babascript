@@ -3,6 +3,8 @@ process.env.NODE_ENV = "test"
 path = require "path"
 assert = require "assert"
 Baba = require "../lib/main"
+BabaScript = require path.resolve "./lib/script"
+Client = require "babascript-client"
 _    = require "underscore"
 
 describe "client test", ->
@@ -90,7 +92,7 @@ describe "client test", ->
       if count > 10
         done()
       else
-        baba.しーくえんしゃる {format: "boolean"}, arguments.callee 
+        baba.しーくえんしゃる {format: "boolean"}, arguments.callee
 
 
   it "return value should be string", (done)->
@@ -132,7 +134,7 @@ describe "client test", ->
         assert.equal num, result.length
         done()
     , 3000
-    
+
   it "single result.worker", (done)->
 
     space = "baba_result_worker"
@@ -161,32 +163,31 @@ describe "client test", ->
     setTimeout =>
       baba.まるちなりざるとどっとわーかー {format: "boolean", broadcast: num}, (result)->
         r = _.sample result
-        id = r.worker.id
-        # これのthis は何？
-        r.worker.てすと {format: "boolean"}
-        r.worker.on "get_task", (result)->
-          assert.equal result.worker.id, id
+        id = r.worker.id()
+        r.worker.てすと {format: "boolean"}, (result) ->
+          assert.ok result.value
+          _id = result.worker.id()
+          assert.equal _id, id
           done()
     , 1000
 
   it "multi player", (done)->
-    space_baba = "baba_multi_player_baba"
-    space_yamada = "baba_multi_player_yamada"
-    baba = new Baba.Script space_baba
-    yamada = new Baba.Script space_yamada
+    space_baba = "multi_player_baba"
+    space_yamada = "multi_player_yamada"
 
-    clientBaba = new Baba.Client space_baba
+    baba = new BabaScript space_baba
+    yamada = new BabaScript space_yamada
+
+    clientBaba = new Client space_baba
     clientBaba.on "get_task", ->
       @returnValue "baba"
 
-    clientaYamada = new Baba.Client space_yamada
+    clientaYamada = new Client space_yamada
     clientaYamada.on "get_task", ->
       @returnValue "yamada"
 
-    baba.ばばさん (result)=>
-      console.log result
+    baba.ばばさん {format: "string"},(result)=>
       assert.equal result.value, "baba"
-      done()
       yamada.やまだくん (result)=>
         assert.equal result.value, "yamada"
         done()

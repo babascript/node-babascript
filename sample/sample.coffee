@@ -1,7 +1,12 @@
-Baba = require "../lib/main"
+Babascript = require "../lib/script"
+console.log Babascript
+baba = new Babascript "baba"
+console.log  baba
+baba.こんばんわ {format: "camera"}, (result)->
+  console.log result
 
-manager = new Baba.Manager "masuilab"
-baba = new Baba.Script manager
+# manager = new Baba.Manager "masuilab"
+# baba = new Baba.Script manager
 
 
 # 朝の出来事をプログラムすると...
@@ -9,10 +14,10 @@ baba = new Baba.Script manager
 # 朝食の準備
 # ゴミを捨てる
 # 家出る準備する
-# 
-
-baba.ほげふが ->
-  console.log "hoge"
+#
+#
+# baba.ほげふが ->
+#   console.log "hoge"
 
 # LindaClient = require "../../linda-client/lib/client"
 # _ = require "underscore"

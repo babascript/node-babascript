@@ -9,11 +9,13 @@ _ = require "underscore"
 async = require "async"
 ManagerClient = require "../lib/managerclient"
 
-module.exports = class Script extends EventEmitter
+module.exports = class BabaScript extends EventEmitter
   linda: null
   isProcessing: false
-  defaultFormat: "boolean"
-  api: "http://linda.babascript.org"
+  defaultFormat: 'boolean'
+  api: 'http://linda.babascript.org'
+  @create = (id)->
+    return new BabaScript id
 
   constructor: (_id)->
     socket = SocketIOClient.connect @api
@@ -175,8 +177,9 @@ module.exports = class Script extends EventEmitter
     @waitReturn cid, (r)=>
       callback null, r
 
-  createWorker: (worker)->
-    return new Script worker
+  createWorker: (id)->
+    worker = new BabaScript id
+    return worker
     # if @id isnt worker
     #   return new Script worker
     # else
