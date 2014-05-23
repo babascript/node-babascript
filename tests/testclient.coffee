@@ -18,6 +18,7 @@ describe "client test", ->
     space = "baba_namespace"
     baba = new Baba.Script space
     assert.equal baba.id(), space
+    baba.delete()
     done()
 
   it "baba constructor's arguments[length-1,2] is function", (done)->
@@ -121,7 +122,7 @@ describe "client test", ->
 
   it "broadcast task", (done)->
     space = "baba_broadcast"
-    num = 3
+    num = 100
     clients = []
     baba = new Baba.Script space
     for i in [0..num-1]
@@ -157,7 +158,7 @@ describe "client test", ->
     baba = new Baba.Script space
     for i in [0..num-1]
       c = new Baba.Client space
-      c.on "get_task", (tuple)->
+      c.on "get_task", (tuple) ->
         @returnValue true
       clients.push c
     setTimeout =>
@@ -175,14 +176,14 @@ describe "client test", ->
     space_baba = "multi_player_baba"
     space_yamada = "multi_player_yamada"
 
-    baba = new BabaScript space_baba
-    yamada = new BabaScript space_yamada
+    baba = new Baba.Script space_baba
+    yamada = new Baba.Script space_yamada
 
-    clientBaba = new Client space_baba
+    clientBaba = new Baba.Client space_baba
     clientBaba.on "get_task", ->
       @returnValue "baba"
 
-    clientaYamada = new Client space_yamada
+    clientaYamada = new Baba.Client space_yamada
     clientaYamada.on "get_task", ->
       @returnValue "yamada"
 
