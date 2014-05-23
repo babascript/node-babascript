@@ -21,6 +21,7 @@
     "grunt-contrib-coffee": "*",
     "grunt-coffeelint": "git+https://github.com/geta6/grunt-coffeelint",
     "grunt-contrib-watch": "git+https://github.com/gruntjs/grunt-contrib-watch",
+    "morgan": "*",
     "babascript-client": "*"
   },
   "dependencies": {
@@ -33,7 +34,8 @@
     "EventEmitter2": "*",
     "async": "^0.7.0",
     "mongoose": "^3.8.8",
-    "socket.io": "^0.9.16"
+    "socket.io": "^0.9.16",
+    "superagent": "^0.18.0"
   },
   "author": "Takumi Baba",
   "license": "MIT"
