@@ -4,8 +4,8 @@ SocketIOClient = require "socket.io-client"
 
 class Client extends EventEmitter
 
-  # api: "http://127.0.0.1:3000"
-  api: "http://linda.babascript.org"
+  api: "http://localhost:3030"
+  # api: "http://linda.babascript.org"
 
   constructor: (@name)->
     options =
