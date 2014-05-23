@@ -1,5 +1,6 @@
 mm = require "methodmissing"
 http = require 'http'
+request = require 'superagent'
 EventEmitter = require("EventEmitter2").EventEmitter2
 LindaSocketIOClient = require("linda-socket.io").Client
 SocketIOClient = require "socket.io-client"
@@ -13,7 +14,8 @@ module.exports = class BabaScript extends EventEmitter
   linda: null
   isProcessing: false
   defaultFormat: 'boolean'
-  api: 'http://linda.babascript.org'
+  # api: 'http://linda.babascript.org'
+  api: 'http://localhost:3030'
   @create = (id)->
     return new BabaScript id
 
@@ -26,16 +28,24 @@ module.exports = class BabaScript extends EventEmitter
     @linda ?= new LindaSocketIOClient().connect socket
     @sts = @linda.tuplespace @id
     @tasks = []
-    if @linda.io.socket.connecting?
-      @linda.io.once "connect", @connect
-    else
-      @connect()
-    return mm @, (key, args)=>
+    @linda.io.once "connect", @connect
+    # if !@linda.io.socket.connecting?
+    #   console.log "event connect"
+    #   @linda.io.once "connect", @connect
+    # else
+    #   @connect()
+    return mm @, (key, args) =>
       @methodmissing key, args
 
   connect: =>
-    @next()
-    @watchCancel()
+    request.get("#{@api}/api/imbaba/#{@id}").end (err, res) =>
+      if res.statusCode is 202
+        members = res.body
+        @workers = []
+        for member in members
+          @workers.push new BabaScript member
+      @next()
+      @watchCancel()
 
   next: ->
     if @tasks.length > 0 and !@isProcessing
@@ -45,11 +55,6 @@ module.exports = class BabaScript extends EventEmitter
   exec: (key, arg, func)->
     args = [arg, func]
     @_do key, args
-    # args.cid = @callbackId()
-    # @tasks.push {key, args}
-    # if !@isProcessing
-    #   @next()
-    # return args.cid
 
   _do: (key, args)->
     args.cid = @callbackId()
