@@ -14,33 +14,30 @@ module.exports = class BabaScript extends EventEmitter
   linda: null
   isProcessing: false
   defaultFormat: 'boolean'
-  api: 'http://linda.babascript.org'
   @create = (id)->
     return new BabaScript id
 
-  constructor: (@id, options={})->
-    socket = SocketIOClient.connect options.linda || @api
+  constructor: (@id, @options={})->
+    @api = options?.linda || 'http://linda.babascript.org'
+    socket = SocketIOClient.connect @api, {'force new connection': true}
     @linda ?= new LindaSocketIOClient().connect socket
     @sts = @linda.tuplespace @id
     @tasks = []
     @linda.io.once "connect", @connect
-    # if !@linda.io.socket.connecting?
-    #   console.log "event connect"
-    #   @linda.io.once "connect", @connect
-    # else
-    #   @connect()
     return mm @, (key, args) =>
       @methodmissing key, args
 
   connect: =>
-    request.get("#{@api}/api/imbaba/#{@id}").end (err, res) =>
-      if res.statusCode is 202
+    {host, port} = @linda.io.socket.options
+    request.get("#{host}:#{port}/api/group/#{@id}").end (err, res) =>
+      if res?.statusCode? and res.statusCode is 202
         members = res.body
         @workers = []
         for member in members
-          @workers.push new BabaScript member
-      @next()
-      @watchCancel()
+          @workers.push @createMediator member
+      setImmediate =>
+        @next()
+        @watchCancel()
 
   next: ->
     if @tasks.length > 0 and !@isProcessing
@@ -138,14 +135,6 @@ module.exports = class BabaScript extends EventEmitter
 
   cancel: (cid)=>
     @sts.write {baba: "script", type: "cancel", cid: cid}
-    # if @task.args.cid is cid
-    #   console.log "yes!!"
-    #   @task = null
-    #   @isProcessing = false
-    #   @next()
-    #   return
-    # for i in [0..@tasks.length-1]
-    #   @tasks.splice i, 1 if @tasks[i].args.cid is cid
 
   watchCancel: ->
     @sts.watch {baba: "script", type: "cancel"}, (err, tuple)=>
@@ -178,11 +167,18 @@ module.exports = class BabaScript extends EventEmitter
       callback null, r
 
   createWorker: (id)->
-    return new BabaScript id
+    return new BabaScript id, @options || {}
 
   callbackId: ->
     return "#{moment().unix()}_#{Math.random(1000000)}"
 
-  wait: ->
-    console.log @
-    console.log "wait!wait!"
+  createMediator: (name) ->
+    c = new Client @id
+    c.mediator = c.linda.tuplespace name
+    c.on "get_task", (result)->
+      @mediator.write result
+      @mediator.take {cid: result.cid, type: 'return'}, (err, r)=>
+        @returnValue r.data.value
+    c.on "cancel_task", (result)->
+      @mediator.write result
+    return c
