@@ -27,7 +27,7 @@ class ManagerClient
     #   # users = JSON.parse body
     #   for user in users
     #     @createClient user
-        
+
 
   createClient: (user)->
     c = new Client @groupName

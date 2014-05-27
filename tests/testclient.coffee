@@ -4,37 +4,39 @@ path = require "path"
 assert = require "assert"
 Baba = require "../lib/main"
 Babascript = require path.resolve "./lib/script"
-Client = require "babascript-client"
+Client = require path.resolve "../node-babascript-client/lib/client"
+# Client = require "babascript-client"
 _    = require "underscore"
+address = 'http://localhost:3030'
 
 describe "client test", ->
 
   it "valid initialize", (done)->
-    baba = new Babascript "baba"
+    baba = new Babascript "baba", {linda: address}
     assert.notEqual baba, null
     done()
 
   it "valid namespace", (done)->
     space = "baba_namespace"
-    baba = new Babascript space
+    baba = new Babascript space, {linda: address}
     assert.equal baba.id(), space
     done()
 
   it "baba constructor's arguments[length-1,2] is function", (done)->
     space = "baba_constructor_event"
-    baba = new Babascript space
-    client = new Client space
+    baba = new Babascript space, {linda: address}
+    client = new Client space, {linda: address}
     client.on "get_task", (result)->
       @returnValue true
     client.on "cancel_task", (task)->
-      console.log "task"
+      console.log task
     baba.引数最後二つはコールバック関数でも良い {format: "boolean"}, (result)->
       done()
 
   it "baba should implement callback event", (done)->
     space = "baba_add_event"
-    baba = new Babascript space
-    client = new Client space
+    baba = new Babascript space, {linda: address}
+    client = new Client space, {linda: address}
     client.on "get_task", (task)->
       @returnValue true
     client.on "cancel_task", (task)->
@@ -45,8 +47,8 @@ describe "client test", ->
 
   it "return value should be boolean", (done)->
     space = "baba_boolean"
-    baba = new Babascript space
-    client = new Client space
+    baba = new Babascript space, {linda: address}
+    client = new Client space, {linda: address}
     client.on "get_task", ->
       @returnValue true
     client.on "cancel_task", ->
@@ -58,8 +60,8 @@ describe "client test", ->
 
   it "should multiple task", (done)->
     space = "baba_multiple_task"
-    baba = new Babascript space
-    client = new Client space
+    baba = new Babascript space, {linda: address}
+    client = new Client space, {linda: address}
     client.on "get_task", (result)->
       @returnValue true
     baba.いっこめ {format: "boolean"}, (r)->
@@ -74,12 +76,12 @@ describe "client test", ->
 
   it "sequential return value", (done)->
     space = "user/baba/seq"
-    baba = new Babascript space
+    baba = new Babascript space, {linda: address}
     count = 0
     ids = []
     clients = []
     for i in [0..9]
-      client = new Client space
+      client = new Client space, {linda: address}
       client.on "get_task", (result)->
         @returnValue true
       clients.push client
@@ -98,8 +100,8 @@ describe "client test", ->
   it "return value should be string", (done)->
     space = "baba_string"
     name = "baba"
-    baba = new Babascript space
-    client = new Client space
+    baba = new Babascript space, {linda: address}
+    client = new Client space, {linda: address}
     client.on "get_task", ->
       @returnValue name
     baba.すとりんぐをください {format: "string"}, (result)->
@@ -110,8 +112,8 @@ describe "client test", ->
   it "return value should be number", (done)->
     space = "baba_number"
     number = 10
-    baba = new Babascript space
-    client = new Client space
+    baba = new Babascript space, {linda: address}
+    client = new Client space, {linda: address}
     client.on "get_task", ->
       @returnValue number
     baba.なんばーをください {format: "number"}, (result)->
@@ -121,11 +123,11 @@ describe "client test", ->
 
   it "broadcast task", (done)->
     space = "baba_broadcast"
-    num = 100
+    num = 10
     clients = []
-    baba = new Babascript space
+    baba = new Babascript space, {linda: address}
     for i in [0..num-1]
-      c = new Client space
+      c = new Client space, {linda: address}
       c.on "get_task", (result)->
         @returnValue true
       clients.push c
@@ -138,25 +140,24 @@ describe "client test", ->
   it "single result.worker", (done)->
 
     space = "baba_result_worker"
-    baba = new Babascript space
-    client = new Client space
-    client.on "get_task", (tuple)->
+    baba = new Babascript space, {linda: address}
+    client = new Client space, {linda: address}
+    client.on "get_task", ->
       @returnValue true
-    setTimeout ->
-      baba.りざるとどっとわーかー {format: "boolean"}, (result)->
+
+    baba.りざるとどっとわーかー {format: "boolean"}, (result)->
+      assert.notEqual result.worker, null
+      result.worker.つづき {format: "boolean"}, (result)->
         assert.notEqual result.worker, null
-        result.worker.つづき {format: "boolean"}, (result)->
-          assert.notEqual result.worker, null
-          done()
-    , 1000
+        done()
 
   it "multi result.worker", (done)->
     space = "baba_multi_result_worker"
     num = 3
     clients = []
-    baba = new Babascript space
+    baba = new Babascript space, {linda: address}
     for i in [0..num-1]
-      c = new Client space
+      c = new Client space, {linda: address}
       c.on "get_task", (tuple) ->
         @returnValue true
       clients.push c
@@ -175,14 +176,14 @@ describe "client test", ->
     space_baba = "multi_player_baba"
     space_yamada = "multi_player_yamada"
 
-    baba = new Babascript space_baba
-    yamada = new Babascript space_yamada
+    baba = new Babascript space_baba, {linda: address}
+    yamada = new Babascript space_yamada, {linda: address}
 
-    clientBaba = new Client space_baba
+    clientBaba = new Client space_baba, {linda: address}
     clientBaba.on "get_task", ->
       @returnValue "baba"
 
-    clientaYamada = new Client space_yamada
+    clientaYamada = new Client space_yamada, {linda: address}
     clientaYamada.on "get_task", ->
       @returnValue "yamada"
 
