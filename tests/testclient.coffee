@@ -3,28 +3,27 @@ process.env.NODE_ENV = "test"
 path = require "path"
 assert = require "assert"
 Baba = require "../lib/main"
-BabaScript = require path.resolve "./lib/script"
+Babascript = require path.resolve "./lib/script"
 Client = require "babascript-client"
 _    = require "underscore"
 
 describe "client test", ->
 
   it "valid initialize", (done)->
-    baba = new Baba.Script "baba"
+    baba = new Babascript "baba"
     assert.notEqual baba, null
     done()
 
   it "valid namespace", (done)->
     space = "baba_namespace"
-    baba = new Baba.Script space
+    baba = new Babascript space
     assert.equal baba.id(), space
-    baba.delete()
     done()
 
   it "baba constructor's arguments[length-1,2] is function", (done)->
     space = "baba_constructor_event"
-    baba = new Baba.Script space
-    client = new Baba.Client space
+    baba = new Babascript space
+    client = new Client space
     client.on "get_task", (result)->
       @returnValue true
     client.on "cancel_task", (task)->
@@ -34,8 +33,8 @@ describe "client test", ->
 
   it "baba should implement callback event", (done)->
     space = "baba_add_event"
-    baba = new Baba.Script space
-    client = new Baba.Client space
+    baba = new Babascript space
+    client = new Client space
     client.on "get_task", (task)->
       @returnValue true
     client.on "cancel_task", (task)->
@@ -46,8 +45,8 @@ describe "client test", ->
 
   it "return value should be boolean", (done)->
     space = "baba_boolean"
-    baba = new Baba.Script space
-    client = new Baba.Client space
+    baba = new Babascript space
+    client = new Client space
     client.on "get_task", ->
       @returnValue true
     client.on "cancel_task", ->
@@ -59,8 +58,8 @@ describe "client test", ->
 
   it "should multiple task", (done)->
     space = "baba_multiple_task"
-    baba = new Baba.Script space
-    client = new Baba.Client space
+    baba = new Babascript space
+    client = new Client space
     client.on "get_task", (result)->
       @returnValue true
     baba.いっこめ {format: "boolean"}, (r)->
@@ -75,12 +74,12 @@ describe "client test", ->
 
   it "sequential return value", (done)->
     space = "user/baba/seq"
-    baba = new Baba.Script space
+    baba = new Babascript space
     count = 0
     ids = []
     clients = []
     for i in [0..9]
-      client = new Baba.Client space
+      client = new Client space
       client.on "get_task", (result)->
         @returnValue true
       clients.push client
@@ -99,8 +98,8 @@ describe "client test", ->
   it "return value should be string", (done)->
     space = "baba_string"
     name = "baba"
-    baba = new Baba.Script space
-    client = new Baba.Client space
+    baba = new Babascript space
+    client = new Client space
     client.on "get_task", ->
       @returnValue name
     baba.すとりんぐをください {format: "string"}, (result)->
@@ -111,8 +110,8 @@ describe "client test", ->
   it "return value should be number", (done)->
     space = "baba_number"
     number = 10
-    baba = new Baba.Script space
-    client = new Baba.Client space
+    baba = new Babascript space
+    client = new Client space
     client.on "get_task", ->
       @returnValue number
     baba.なんばーをください {format: "number"}, (result)->
@@ -124,9 +123,9 @@ describe "client test", ->
     space = "baba_broadcast"
     num = 100
     clients = []
-    baba = new Baba.Script space
+    baba = new Babascript space
     for i in [0..num-1]
-      c = new Baba.Client space
+      c = new Client space
       c.on "get_task", (result)->
         @returnValue true
       clients.push c
@@ -139,8 +138,8 @@ describe "client test", ->
   it "single result.worker", (done)->
 
     space = "baba_result_worker"
-    baba = new Baba.Script space
-    client = new Baba.Client space
+    baba = new Babascript space
+    client = new Client space
     client.on "get_task", (tuple)->
       @returnValue true
     setTimeout ->
@@ -155,9 +154,9 @@ describe "client test", ->
     space = "baba_multi_result_worker"
     num = 3
     clients = []
-    baba = new Baba.Script space
+    baba = new Babascript space
     for i in [0..num-1]
-      c = new Baba.Client space
+      c = new Client space
       c.on "get_task", (tuple) ->
         @returnValue true
       clients.push c
@@ -176,14 +175,14 @@ describe "client test", ->
     space_baba = "multi_player_baba"
     space_yamada = "multi_player_yamada"
 
-    baba = new Baba.Script space_baba
-    yamada = new Baba.Script space_yamada
+    baba = new Babascript space_baba
+    yamada = new Babascript space_yamada
 
-    clientBaba = new Baba.Client space_baba
+    clientBaba = new Client space_baba
     clientBaba.on "get_task", ->
       @returnValue "baba"
 
-    clientaYamada = new Baba.Client space_yamada
+    clientaYamada = new Client space_yamada
     clientaYamada.on "get_task", ->
       @returnValue "yamada"
 

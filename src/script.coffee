@@ -1,4 +1,4 @@
-mm = require "methodmissing"
+mm = require 'methodmissing'
 http = require 'http'
 request = require 'superagent'
 EventEmitter = require("EventEmitter2").EventEmitter2
@@ -14,17 +14,12 @@ module.exports = class BabaScript extends EventEmitter
   linda: null
   isProcessing: false
   defaultFormat: 'boolean'
-  # api: 'http://linda.babascript.org'
-  api: 'http://localhost:3030'
+  api: 'http://linda.babascript.org'
   @create = (id)->
     return new BabaScript id
 
-  constructor: (_id)->
-    socket = SocketIOClient.connect @api
-    if _id instanceof ManagerClient
-      @id = _id.groupName
-    else
-      @id = _id
+  constructor: (@id, options={})->
+    socket = SocketIOClient.connect options.linda || @api
     @linda ?= new LindaSocketIOClient().connect socket
     @sts = @linda.tuplespace @id
     @tasks = []
@@ -183,20 +178,11 @@ module.exports = class BabaScript extends EventEmitter
       callback null, r
 
   createWorker: (id)->
-    worker = new BabaScript id
-    return worker
-    # if @id isnt worker
-    #   return new Script worker
-    # else
-    #   return
-
-    # return mm @, (key, args)=>
-    #   if typeof args[0] is 'function'
-    #     args[1] = args[0]
-    #     args[0] = {}
-    #   args[0].unicast = worker
-    #   console.log "hoge"
-    #   @methodmissing key, args
+    return new BabaScript id
 
   callbackId: ->
     return "#{moment().unix()}_#{Math.random(1000000)}"
+
+  wait: ->
+    console.log @
+    console.log "wait!wait!"

@@ -7,10 +7,9 @@ class Client extends EventEmitter
   api: "http://localhost:3030"
   # api: "http://linda.babascript.org"
 
-  constructor: (@name)->
-    options =
-      'force new connection': true
-    socket = SocketIOClient.connect @api, options
+  constructor: (@name, options={})->
+    api = options.linda || @api
+    socket = SocketIOClient.connect api, {'force new connection': true}
     @linda = new LindaSocketIOClient().connect socket
     if !@linda.io.socket.open
       @linda.io.once "connect", @connect
