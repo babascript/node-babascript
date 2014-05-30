@@ -12,7 +12,7 @@ address = 'http://localhost:3030'
 describe "client test", ->
 
   it "valid initialize", (done)->
-    baba = new Babascript "baba", {linda: address}
+    baba = new Babascript "baba"
     assert.notEqual baba, null
     done()
 
@@ -192,3 +192,11 @@ describe "client test", ->
       yamada.やまだくん (result)=>
         assert.equal result.value, "yamada"
         done()
+
+  it "virtual client test", (done) ->
+
+    baba = new Babascript "takumibaba", {linda: address, localUsers: ["takumibaba"]}
+
+    baba.進捗どうですか {format: "boolean"}, (result) ->
+      console.log result
+      done()

@@ -4,11 +4,12 @@ request = require 'superagent'
 EventEmitter = require("EventEmitter2").EventEmitter2
 LindaSocketIOClient = require("linda-socket.io").Client
 SocketIOClient = require "socket.io-client"
+Client = require "babascript-client"
 moment = require "moment"
 sys = require "sys"
 _ = require "underscore"
 async = require "async"
-ManagerClient = require "../lib/managerclient"
+# ManagerClient = require "../lib/managerclient"
 
 module.exports = class BabaScript extends EventEmitter
   linda: null
@@ -18,7 +19,8 @@ module.exports = class BabaScript extends EventEmitter
     return new BabaScript id
 
   constructor: (@id, @options={})->
-    @api = options?.linda || 'http://linda.babascript.org'
+    @api = @options?.linda || 'http://linda.babascript.org'
+    @localUsers = @options?.localUsers || null
     socket = SocketIOClient.connect @api, {'force new connection': true}
     @linda ?= new LindaSocketIOClient().connect socket
     @sts = @linda.tuplespace @id
@@ -29,15 +31,27 @@ module.exports = class BabaScript extends EventEmitter
 
   connect: =>
     {host, port} = @linda.io.socket.options
-    request.get("#{host}:#{port}/api/group/#{@id}").end (err, res) =>
-      if res?.statusCode? and res.statusCode is 202
-        members = res.body
-        @workers = []
-        for member in members
-          @workers.push @createMediator member
+    if @localUsers?
+      @workers = []
+      for user in @localUsers
+        @workers.push @createMediator user
       setImmediate =>
         @next()
         @watchCancel()
+    else
+      request.get("#{host}:#{port}/api/group/#{@id}").end (err, res) =>
+        if res?.statusCode? and res.statusCode is 202
+          json = JSON.parse res.body
+          @workers = []
+          if json.group?
+            members = json.group
+            for member in membrs
+              @workers.push @createMediator member
+          else
+            @workres.push json.user
+        setImmediate =>
+          @next()
+          @watchCancel()
 
   next: ->
     if @tasks.length > 0 and !@isProcessing
@@ -173,10 +187,22 @@ module.exports = class BabaScript extends EventEmitter
     return "#{moment().unix()}_#{Math.random(1000000)}"
 
   createMediator: (name) ->
-    c = new Client @id
+    c = new Client @id, {linda: 'http://localhost:3030'}
+    c.name = name
     c.mediator = c.linda.tuplespace name
     c.on "get_task", (result)->
-      @mediator.write result
+      # @mediator.write result
+      # ここで、Babascript Client に流すか
+      # 外部サービスを利用した形にするか、決定する
+      # 外部サービスならwebhook0
+      # url = "http://slack-babascript.herokuapp.com/hubot/babascript/write/"
+      console.log result
+      url = "http://babascript-hubot-twitter.herokuapp.com/babascript/twitter/"
+      url += c.name
+      result.groupname = c.id
+      result.service = c.api
+      result.key = result.key + "#{Date.now()}"
+      request.post(url).send(result).end (err, res) ->
       @mediator.take {cid: result.cid, type: 'return'}, (err, r)=>
         @returnValue r.data.value
     c.on "cancel_task", (result)->

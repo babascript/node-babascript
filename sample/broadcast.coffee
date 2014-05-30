@@ -7,7 +7,7 @@ lunch = ["和食", "洋食", "中華", "その他"]
 babas.昼食何が良いですか {format: "list", list: lunch, broadcast: 10}, (results)->
   workers = []
   hoge = {}
-  console.log results
+  console.log result
   for result in results
     hoge[result.value] += 1
     worker = result.worker
