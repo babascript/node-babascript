@@ -193,10 +193,10 @@ describe "client test", ->
         assert.equal result.value, "yamada"
         done()
 
-  it "virtual client test", (done) ->
-
-    baba = new Babascript "takumibaba", {linda: address, localUsers: ["takumibaba"]}
-
-    baba.進捗どうですか {format: "boolean"}, (result) ->
-      console.log result
-      done()
+  # it "virtual client test", (done) ->
+  #
+  #   baba = new Babascript "takumibaba", {linda: address, localUsers: ["takumibaba"]}
+  #
+  #   baba.進捗どうですか {format: "boolean"}, (result) ->
+  #     console.log result
+  #     done()

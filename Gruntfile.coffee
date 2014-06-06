@@ -10,7 +10,7 @@ module.exports = (grunt) ->
 
   grunt.registerTask "build",   [ 'coffeelint', 'coffee']
   grunt.registerTask "reload",   [ 'coffeelint', 'coffee', "watch"]
-  grunt.registerTask 'test',    [ 'coffeelint', 'coffee']
+  grunt.registerTask 'test',    [ 'coffeelint', 'coffee', 'simplemocha']
   grunt.registerTask 'default', [ 'coffeelint', 'coffee', 'simplemocha', 'watch' ]
   grunt.registerTask "debug", ["coffeelint", "coffee", "watch"]
 

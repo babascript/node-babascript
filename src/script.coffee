@@ -4,12 +4,11 @@ request = require 'superagent'
 EventEmitter = require("EventEmitter2").EventEmitter2
 LindaSocketIOClient = require("linda-socket.io").Client
 SocketIOClient = require "socket.io-client"
-Client = require "babascript-client"
+Client = require "../../node-babascript-client/lib/client"
 moment = require "moment"
 sys = require "sys"
 _ = require "underscore"
 async = require "async"
-# ManagerClient = require "../lib/managerclient"
 
 module.exports = class BabaScript extends EventEmitter
   linda: null
@@ -18,37 +17,47 @@ module.exports = class BabaScript extends EventEmitter
   @create = (id)->
     return new BabaScript id
 
-  constructor: (@id, @options={})->
+  constructor: (id, @options={})->
+    if _.isArray id
+      @options.users = id
+      @id = @callbackId()
+    else
+      # 同じグループで、同時に2つのプログラムが走った時
+      # id_#{uuid}にして、同じ処理系統にならないようにする
+      # id部分だけ抜き出して、グループ名にすればおｋ
+      @id = id
     @api = @options?.linda || 'http://linda.babascript.org'
-    @localUsers = @options?.localUsers || null
     socket = SocketIOClient.connect @api, {'force new connection': true}
     @linda ?= new LindaSocketIOClient().connect socket
     @sts = @linda.tuplespace @id
     @tasks = []
     @linda.io.once "connect", @connect
-    return mm @, (key, args) =>
+    return mm.call @, @, (key, args) =>
       @methodmissing key, args
 
   connect: =>
     {host, port} = @linda.io.socket.options
-    if @localUsers?
+    if @options?.users?
       @workers = []
-      for user in @localUsers
+      for user in @options.users
         @workers.push @createMediator user
       setImmediate =>
         @next()
         @watchCancel()
     else
-      request.get("#{host}:#{port}/api/group/#{@id}").end (err, res) =>
-        if res?.statusCode? and res.statusCode is 202
-          json = JSON.parse res.body
+      request.get("#{host}:#{port}/api/group/#{@id}/member").end (err, res) =>
+        if res?.statusCode is 200
+          members = []
+          for user in res.body
+            members.push user
           @workers = []
-          if json.group?
-            members = json.group
-            for member in membrs
-              @workers.push @createMediator member
+          @vclients = []
+          if _.isArray members
+            for member in members
+              @vclients.push @createMediator member
+              @workers.push new BabaScript member.username
           else
-            @workres.push json.user
+            @workres.push members
         setImmediate =>
           @next()
           @watchCancel()
@@ -94,13 +103,13 @@ module.exports = class BabaScript extends EventEmitter
     else
       callback = ->
     @once "#{cid}_callback", callback
-    id = @sts.write tuple
+    @sts.write tuple
     r = null
     if tuple.type is "broadcast"
       h = []
       for i in [0..tuple.count]
-        h.push (callback)=>
-          @addResult(cid, callback)
+        h.push (c)=>
+          @addResult(cid, c)
       async.parallel h, (err, results)=>
         throw err if err
         # @cancel cid
@@ -109,7 +118,6 @@ module.exports = class BabaScript extends EventEmitter
         @next()
     else
       @waitReturn cid, (tuple)=>
-        r = tuple
         @emit "#{cid}_callback", tuple
         @isProcessing = false
         @next()
@@ -142,6 +150,8 @@ module.exports = class BabaScript extends EventEmitter
           tuple.timeout = timeout
           setTimeout =>
             @cancel cid
+            @sts.cancel @cancelId
+            @cancelId = ''
           , v
         else
           tuple[k] = v
@@ -154,7 +164,7 @@ module.exports = class BabaScript extends EventEmitter
     @sts.watch {baba: "script", type: "cancel"}, (err, tuple)=>
       throw err if err
       cid = tuple.data.cid
-      if @task.args.cid is cid
+      if @task?.args?.cid is cid
         @task.args.callback {value: "cancel"}
         @task = null
         @isProcessing = false
@@ -175,36 +185,57 @@ module.exports = class BabaScript extends EventEmitter
         task:   tuple.data._task
         worker: worker
       callback.call @, result
+      cid = @task.args.cid
+      t =
+        type: 'eval'
+        cid: cid
+      tt =
+        type: 'broadcast'
+        cid: cid
+      @sts.take t, ->
+        console.log 'eval take?'
+      @sts.take tt, ->
+        console.log 'broadcast take?'
 
   addResult: (cid, callback)=>
     @waitReturn cid, (r)=>
       callback null, r
 
   createWorker: (id)->
-    return new BabaScript id, @options || {}
+    return _.find @workers, (w) ->
+      return w.id() is id
 
   callbackId: ->
     return "#{moment().unix()}_#{Math.random(1000000)}"
 
-  createMediator: (name) ->
-    c = new Client @id, {linda: 'http://localhost:3030'}
-    c.name = name
-    c.mediator = c.linda.tuplespace name
+  createMediator: (member) ->
+    # ここで、クライアントのフィルタリングしても良い
+    # 追加/削除もイベント発行で、みたいな
+    c = new Client @id, @options || {}
+    c.data = member
+    c.mediator = c.linda.tuplespace member.username
+    console.log c.mediator.name
+    c.mediator.watch {type: 'update', what: 'data'}, (err, r) =>
+      key = r.tuple.key
+      c.data[key] = r.tuple.value
     c.on "get_task", (result)->
-      # @mediator.write result
+      result.type = 'eval'
+      # console.log 'get_task'
+      # console.log result
+      @mediator.write result
       # ここで、Babascript Client に流すか
       # 外部サービスを利用した形にするか、決定する
-      # 外部サービスならwebhook0
-      # url = "http://slack-babascript.herokuapp.com/hubot/babascript/write/"
-      console.log result
-      url = "http://babascript-hubot-twitter.herokuapp.com/babascript/twitter/"
-      url += c.name
-      result.groupname = c.id
-      result.service = c.api
-      result.key = result.key + "#{Date.now()}"
-      request.post(url).send(result).end (err, res) ->
+      # 外部サービスならwebhook
+      # url += c.name
+      # result.username = c.name
+      # result.groupname = c.id
+      # result.service = c.api
+      # result.key = result.key + "#{Date.now()}"
+      # request.post(url).send(result).end (err, res)  ->
       @mediator.take {cid: result.cid, type: 'return'}, (err, r)=>
-        @returnValue r.data.value
+        # console.log 'return value'
+        # console.log r
+        @returnValue r.data.value, {worker: @mediator.name}
     c.on "cancel_task", (result)->
       @mediator.write result
     return c
