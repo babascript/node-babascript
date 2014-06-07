@@ -197,7 +197,7 @@ describe "client test", ->
     space_baba = "multi_player_v_baba"
     space_yamada = "multi_player_v_yamada"
 
-    babayamada = new BabaScript [space_baba, space_yamada], {manage: addrss}
+    babayamada = new Babascript [space_baba, space_yamada], {manager: address}
 
     clientBaba = new Client space_baba, {manager: address}
     clientBaba.on "get_task", ->
@@ -207,11 +207,12 @@ describe "client test", ->
     clientaYamada.on "get_task", ->
       @returnValue true
 
-    babayamada.multi_player_in_one_variable {format: 'booelean'}, (result) ->
-
+    babayamada.multi_player_in_one_variable {format: 'boolean'}, (result) ->
+      console.log result
+      done()
 
   it 'team test', (done) ->
-
+    done()
   # it "virtual client test", (done) ->
   #
   #   baba = new Babascript "takumibaba", {linda: address, localUsers: ["takumibaba"]}

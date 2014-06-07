@@ -1,7 +1,7 @@
 mm = require 'methodmissing'
 http = require 'http'
 request = require 'superagent'
-EventEmitter = require("EventEmitter2").EventEmitter2
+EventEmitter = require("events").EventEmitter
 LindaSocketIOClient = require("linda-socket.io").Client
 SocketIOClient = require "socket.io-client"
 Client = require "../../node-babascript-client/lib/client"
@@ -14,8 +14,8 @@ module.exports = class BabaScript extends EventEmitter
   linda: null
   isProcessing: false
   defaultFormat: 'boolean'
-  @create = (id)->
-    return new BabaScript id
+  @create = (id, options={})->
+    return new BabaScript id, options
 
   constructor: (id, @options={})->
     if _.isArray id
@@ -27,14 +27,16 @@ module.exports = class BabaScript extends EventEmitter
       # id部分だけ抜き出して、グループ名にすればおｋ
       @id = id
     @parent = @options?.parent || null
+    @attributes = {}
     @api = @options?.manager || 'http://linda.babascript.org'
     socket = SocketIOClient.connect @api, {'force new connection': true}
     @linda ?= new LindaSocketIOClient().connect socket
     @sts = @linda.tuplespace @id
     @tasks = []
     @linda.io.once "connect", @connect
-    return mm.call @, @, (key, args) =>
+    @a = mm.call @, @, (key, args) =>
       @methodmissing key, args
+    return @a
 
   connect: =>
     {host, port} = @linda.io.socket.options
@@ -68,6 +70,19 @@ module.exports = class BabaScript extends EventEmitter
           for member in members
             @vclients.push @createMediator member
             @workers.push new BabaScript member.username, _options || {}
+            # console.log member
+            @attributes[member.username] = member
+            t =
+              type: 'userdata'
+            @linda.tuplespace(member.username).watch t, (err, result) =>
+              return if err
+              # console.log 'user data get!'
+              # console.log result
+              {key, value, username} = result.data
+              _.each @attributes, (v, k) =>
+                if k is username
+                  @attributes[k].attribute[key] = value
+                  @a.emit 'change_data', @attributes
         else
           # ここで、ユーザデータを取得する？
           if !_options?.users?
@@ -75,6 +90,7 @@ module.exports = class BabaScript extends EventEmitter
           else
             users = _options.users
           for u in users
+            # console.log u
             @vclients.push @createMediator {username: u}
             @workers.push new BabaScript u, _options || {}
         setImmediate =>
@@ -245,7 +261,6 @@ module.exports = class BabaScript extends EventEmitter
     c = new Client @id, @options || {}
     c.data = member
     c.mediator = c.linda.tuplespace member.username
-    console.log "Client:#{c.mediator.name}"
     c.mediator.watch {type: 'update', what: 'data'}, (err, r) =>
       key = r.tuple.key
       c.data[key] = r.tuple.value
