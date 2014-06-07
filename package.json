@@ -25,17 +25,18 @@
     "babascript-client": "*"
   },
   "dependencies": {
-    "methodmissing": "*",
-    "moment": "~2.3.0",
-    "underscore": "~1.5.2",
-    "linda-socket.io": "~0.1.5",
-    "socket.io-client": "~0.9.16",
-    "request": "~2.33.0",
     "EventEmitter2": "*",
     "async": "^0.7.0",
+    "linda-socket.io": "~0.1.5",
+    "lodash": "^2.4.1",
+    "methodmissing": "*",
+    "moment": "~2.3.0",
     "mongoose": "^3.8.8",
+    "request": "~2.33.0",
     "socket.io": "^0.9.16",
-    "superagent": "^0.18.0"
+    "socket.io-client": "~0.9.16",
+    "superagent": "^0.18.0",
+    "underscore": "~1.5.2"
   },
   "author": "Takumi Baba",
   "license": "MIT"

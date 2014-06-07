@@ -7,7 +7,7 @@ SocketIOClient = require "socket.io-client"
 Client = require "../../node-babascript-client/lib/client"
 moment = require "moment"
 sys = require "sys"
-_ = require "underscore"
+_ = require "lodash"
 async = require "async"
 
 module.exports = class BabaScript extends EventEmitter
@@ -26,7 +26,8 @@ module.exports = class BabaScript extends EventEmitter
       # id_#{uuid}にして、同じ処理系統にならないようにする
       # id部分だけ抜き出して、グループ名にすればおｋ
       @id = id
-    @api = @options?.linda || 'http://linda.babascript.org'
+    @parent = @options?.parent || null
+    @api = @options?.manager || 'http://linda.babascript.org'
     socket = SocketIOClient.connect @api, {'force new connection': true}
     @linda ?= new LindaSocketIOClient().connect socket
     @sts = @linda.tuplespace @id
@@ -37,10 +38,22 @@ module.exports = class BabaScript extends EventEmitter
 
   connect: =>
     {host, port} = @linda.io.socket.options
-    if @options?.users?
+    @vclients = []
+    @workers = []
+    if @options.child is true
+      return setImmediate =>
+        @next()
+        @watchCancel()
+    _options = _.clone @options
+    _options.child = true
+    if !@options?.manager?
       @workers = []
-      for user in @options.users
-        @workers.push @createMediator user
+      if !@options?.users?
+        _options.users = [@id]
+      for user in _options.users
+        u = {username: user}
+        @vclients.push @createMediator u
+        @workers.push new BabaScript u.username, _options || {}
       setImmediate =>
         @next()
         @watchCancel()
@@ -50,14 +63,20 @@ module.exports = class BabaScript extends EventEmitter
           members = []
           for user in res.body
             members.push user
-          @workers = []
-          @vclients = []
-          if _.isArray members
-            for member in members
-              @vclients.push @createMediator member
-              @workers.push new BabaScript member.username
+          if !_.isArray members
+            members = [members]
+          for member in members
+            @vclients.push @createMediator member
+            @workers.push new BabaScript member.username, _options || {}
+        else
+          # ここで、ユーザデータを取得する？
+          if !_options?.users?
+            users = [@id]
           else
-            @workres.push members
+            users = _options.users
+          for u in users
+            @vclients.push @createMediator {username: u}
+            @workers.push new BabaScript u, _options || {}
         setImmediate =>
           @next()
           @watchCancel()
@@ -115,6 +134,12 @@ module.exports = class BabaScript extends EventEmitter
         # @cancel cid
         @emit "#{cid}_callback", results
         @isProcessing = false
+        cid = @task.args.cid
+        tt =
+          type: 'broadcast'
+          cid: cid
+        @sts.take tt, ->
+        @task = ''
         @next()
     else
       @waitReturn cid, (tuple)=>
@@ -179,31 +204,37 @@ module.exports = class BabaScript extends EventEmitter
   waitReturn: (cid, callback)->
     @sts.take {baba: "script", type: "return", cid: cid}, (err, tuple)=>
       return callback.call @, {value: "cancel"} if err is "cancel"
-      worker = @createWorker tuple.data.worker
       result =
         value:  tuple.data.value
         task:   tuple.data._task
-        worker: worker
+        worker: @getWorker tuple.data.worker
       callback.call @, result
-      cid = @task.args.cid
-      t =
-        type: 'eval'
-        cid: cid
-      tt =
-        type: 'broadcast'
-        cid: cid
-      @sts.take t, ->
-        console.log 'eval take?'
-      @sts.take tt, ->
-        console.log 'broadcast take?'
 
   addResult: (cid, callback)=>
     @waitReturn cid, (r)=>
       callback null, r
 
-  createWorker: (id)->
-    return _.find @workers, (w) ->
+  getWorker: (id)->
+    # 自分が持ってなかったら、parentを見に行く
+    # console.log 'instnaceof?'
+    # console.log @ instanceof BabaScript
+    # console.log @workers[0]
+    # return @workers[0] if id is @id
+    # console.log id
+    # console.log @id
+    # if @workers? and @workers.length > 0
+    #   return @parent.getWorker id
+    # else
+    w = _.find @workers, (w) ->
       return w.id() is id
+    if !w?
+      @workers = [] if !@workers?
+      w = new BabaScript id, @options || {}
+      # ここで新たなBabascriptを宣言しない方法が必要...
+      @workers.push w
+    return w
+
+
 
   callbackId: ->
     return "#{moment().unix()}_#{Math.random(1000000)}"
@@ -214,7 +245,7 @@ module.exports = class BabaScript extends EventEmitter
     c = new Client @id, @options || {}
     c.data = member
     c.mediator = c.linda.tuplespace member.username
-    console.log c.mediator.name
+    console.log "Client:#{c.mediator.name}"
     c.mediator.watch {type: 'update', what: 'data'}, (err, r) =>
       key = r.tuple.key
       c.data[key] = r.tuple.value
