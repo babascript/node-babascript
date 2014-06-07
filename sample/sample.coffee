@@ -3,14 +3,20 @@ EventEmitter = require('events').EventEmitter
 _  = require 'underscore'
 # baba = new Babascript ['baba', 'tanaka'], {manager: "http://localhost:3030"}
 
-# baba = new Babascript 'masuilab', {manager: "http://localhost:3030"}
-baba = Babascript.create 'masuilab', {manager: "http://localhost:3030"}
-baba.on 'change_data', (attr)->
-  console.log attr
-# baba.on "hoge", ->
-#   console.log "hoge"
-# baba.emit 'hoge'
+baba = new Babascript 'masuilab', {manager: "http://localhost:3030"}
+baba.on "hoge", ->
+  console.log @
+  console.log "hoge"
+baba.emit 'hoge'
+baba.exec "hoge", {format: 'boolean'}, (result) ->
+  result.getWorker().exec "fuga", {}, (r) ->
+    console.log r
+
+# baba.on 'change_data', (attr) ->
+#   console.log @
+#   console.log attr
 # baba.こんばんわ {format: "boolean"}, (result)->
+#   console.log result
 #   if !_.isArray(result) then a = result else a = result[0]
 #   a.worker.ほげふが {format: 'string'}, (r) ->
 #     console.log 'true end'

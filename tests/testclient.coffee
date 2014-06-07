@@ -19,7 +19,7 @@ describe "client test", ->
   it "valid namespace", (done)->
     space = "baba_namespace"
     baba = new Babascript space
-    assert.equal baba.id(), space
+    assert.equal baba.id, space
     done()
 
   it "baba constructor's arguments[length-1,2] is function", (done)->
@@ -83,19 +83,19 @@ describe "client test", ->
     for i in [0..9]
       client = new Client space, {manager: address}
       client.on "get_task", (result)->
+        ids.push @id
         @returnValue true
       clients.push client
-    baba.しーくえんしゃる {format: "boolean"}, (result)->
-      isExist = _.find ids, (id)->
-        return id.toString() is result.worker.id()
-      assert.equal isExist, undefined
-      ids.push result.worker
-      count += 1
-      if count > 10
-        done()
-      else
-        baba.しーくえんしゃる {format: "boolean"}, arguments.callee
-
+    setTimeout ->
+      baba.しーくえんしゃる {format: "boolean"}, (result)->
+        # console.log result.worker()
+        count += 1
+        if count is 10
+          if _.uniq(ids).length is 10
+            done()
+        else
+          baba.しーくえんしゃる {format: "boolean"}, arguments.callee
+    , 1000
 
   it "return value should be string", (done)->
     space = "baba_string"
@@ -146,9 +146,10 @@ describe "client test", ->
       @returnValue true
 
     baba.りざるとどっとわーかー {format: "boolean"}, (result)->
-      assert.notEqual result.worker, null
-      result.worker.つづき {format: "boolean"}, (result)->
-        assert.notEqual result.worker, null
+      assert.notEqual result.getWorker, null
+      result.getWorker().つづき {format: "boolean"}, (result)->
+        console.log result
+        assert.notEqual result.getWorker, null
         done()
 
   it "multi result.worker", (done)->
@@ -164,10 +165,10 @@ describe "client test", ->
     setTimeout =>
       baba.まるちなりざるとどっとわーかー {format: "boolean", broadcast: num}, (result)->
         r = _.sample result
-        id = r.worker.id()
-        r.worker.てすと {format: "boolean"}, (result) ->
+        id = r.getWorker().id
+        r.getWorker().てすと {format: "boolean"}, (result) ->
           assert.ok result.value
-          _id = result.worker.id()
+          _id = result.getWorker().id
           assert.equal _id, id
           done()
     , 1000

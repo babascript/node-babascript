@@ -14,6 +14,7 @@ module.exports = class BabaScript extends EventEmitter
   linda: null
   isProcessing: false
   defaultFormat: 'boolean'
+  id: ''
   @create = (id, options={})->
     return new BabaScript id, options
 
@@ -34,9 +35,9 @@ module.exports = class BabaScript extends EventEmitter
     @sts = @linda.tuplespace @id
     @tasks = []
     @linda.io.once "connect", @connect
-    @a = mm.call @, @, (key, args) =>
+    @__self = mm @, (key, args) =>
       @methodmissing key, args
-    return @a
+    return @__self
 
   connect: =>
     {host, port} = @linda.io.socket.options
@@ -81,8 +82,9 @@ module.exports = class BabaScript extends EventEmitter
               {key, value, username} = result.data
               _.each @attributes, (v, k) =>
                 if k is username
+                  # console.log k, v
                   @attributes[k].attribute[key] = value
-                  @a.emit 'change_data', @attributes
+                  @__self.emit 'change_data', @attributes
         else
           # ここで、ユーザデータを取得する？
           if !_options?.users?
@@ -220,10 +222,15 @@ module.exports = class BabaScript extends EventEmitter
   waitReturn: (cid, callback)->
     @sts.take {baba: "script", type: "return", cid: cid}, (err, tuple)=>
       return callback.call @, {value: "cancel"} if err is "cancel"
+      options = @options
       result =
         value:  tuple.data.value
         task:   tuple.data._task
-        worker: @getWorker tuple.data.worker
+        getWorker: ->
+          # console.log @workers
+          return new BabaScript tuple.data.worker, options || {}
+          # console.log @sts
+          # @getWorker tuple.data.worker
       callback.call @, result
 
   addResult: (cid, callback)=>
@@ -231,6 +238,7 @@ module.exports = class BabaScript extends EventEmitter
       callback null, r
 
   getWorker: (id)->
+    return new BabaScript id, @options || {}
     # 自分が持ってなかったら、parentを見に行く
     # console.log 'instnaceof?'
     # console.log @ instanceof BabaScript
@@ -241,16 +249,15 @@ module.exports = class BabaScript extends EventEmitter
     # if @workers? and @workers.length > 0
     #   return @parent.getWorker id
     # else
-    w = _.find @workers, (w) ->
-      return w.id() is id
-    if !w?
-      @workers = [] if !@workers?
-      w = new BabaScript id, @options || {}
-      # ここで新たなBabascriptを宣言しない方法が必要...
-      @workers.push w
-    return w
-
-
+    # w = _.find @workers, (w) ->
+    #   console.log w
+    #   return w.id() is id
+    # if !w?
+    #   @workers = [] if !@workers?
+    #   w = new BabaScript id, @options || {}
+    #   # ここで新たなBabascriptを宣言しない方法が必要...
+    #   @workers.push w
+    # return w
 
   callbackId: ->
     return "#{moment().unix()}_#{Math.random(1000000)}"
