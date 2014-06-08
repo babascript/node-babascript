@@ -1,7 +1,9 @@
 mm = require 'methodmissing'
 http = require 'http'
+Util = require 'util'
 request = require 'superagent'
-EventEmitter = require("events").EventEmitter
+# EventEmitter = require("events").EventEmitter
+EventEmitter = require("EventEmitter2").EventEmitter2
 LindaSocketIOClient = require("linda-socket.io").Client
 SocketIOClient = require "socket.io-client"
 Client = require "../../node-babascript-client/lib/client"
@@ -9,6 +11,8 @@ moment = require "moment"
 sys = require "sys"
 _ = require "lodash"
 async = require "async"
+
+class UserDataMediator extends EventEmitter
 
 module.exports = class BabaScript extends EventEmitter
   linda: null
@@ -34,10 +38,14 @@ module.exports = class BabaScript extends EventEmitter
     @linda ?= new LindaSocketIOClient().connect socket
     @sts = @linda.tuplespace @id
     @tasks = []
+    @events = new UserDataMediator()
     @linda.io.once "connect", @connect
     @__self = mm @, (key, args) =>
       @methodmissing key, args
     return @__self
+
+  inspect: ->
+    return @
 
   connect: =>
     {host, port} = @linda.io.socket.options
@@ -56,7 +64,7 @@ module.exports = class BabaScript extends EventEmitter
       for user in _options.users
         u = {username: user}
         @vclients.push @createMediator u
-        @workers.push new BabaScript u.username, _options || {}
+        # @workers.push new BabaScript u.username, _options || {}
       setImmediate =>
         @next()
         @watchCancel()
@@ -70,21 +78,21 @@ module.exports = class BabaScript extends EventEmitter
             members = [members]
           for member in members
             @vclients.push @createMediator member
-            @workers.push new BabaScript member.username, _options || {}
+            # @workers.push new BabaScript member.username, _options || {}
             # console.log member
             @attributes[member.username] = member
             t =
               type: 'userdata'
             @linda.tuplespace(member.username).watch t, (err, result) =>
               return if err
-              # console.log 'user data get!'
-              # console.log result
               {key, value, username} = result.data
               _.each @attributes, (v, k) =>
                 if k is username
-                  # console.log k, v
                   @attributes[k].attribute[key] = value
-                  @__self.emit 'change_data', @attributes
+                  @events.emit "change_data", @attributes[k]
+                  # @event.on 'change_data', (attr) ->
+                  #   console.log attr
+                  # @event.emit 'change_data', @attributes
         else
           # ここで、ユーザデータを取得する？
           if !_options?.users?
@@ -94,13 +102,13 @@ module.exports = class BabaScript extends EventEmitter
           for u in users
             # console.log u
             @vclients.push @createMediator {username: u}
-            @workers.push new BabaScript u, _options || {}
+            # @workers.push new BabaScript u, _options || {}
         setImmediate =>
           @next()
           @watchCancel()
 
   next: ->
-    if @tasks.length > 0 and !@isProcessing
+    if @tasks.length > 0
       @task = @tasks.shift()
       @humanExec @task.key, @task.args
 
@@ -110,9 +118,11 @@ module.exports = class BabaScript extends EventEmitter
 
   _do: (key, args)->
     args.cid = @callbackId()
+    console.log key
     @tasks.push {key, args}
-    if !@isProcessing
-      @next()
+    # if !@isProcessing
+    # 接続済みか、確認して@next
+    @next()
     return args.cid
 
   methodmissing: (key, args)->
@@ -238,7 +248,7 @@ module.exports = class BabaScript extends EventEmitter
       callback null, r
 
   getWorker: (id)->
-    return new BabaScript id, @options || {}
+    # return new BabaScript id, @options || {}
     # 自分が持ってなかったら、parentを見に行く
     # console.log 'instnaceof?'
     # console.log @ instanceof BabaScript
