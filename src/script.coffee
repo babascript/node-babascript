@@ -64,7 +64,6 @@ module.exports = class BabaScript extends EventEmitter
       for user in _options.users
         u = {username: user}
         @vclients.push @createMediator u
-        # @workers.push new BabaScript u.username, _options || {}
       setImmediate =>
         @next()
         @watchCancel()
@@ -78,8 +77,6 @@ module.exports = class BabaScript extends EventEmitter
             members = [members]
           for member in members
             @vclients.push @createMediator member
-            # @workers.push new BabaScript member.username, _options || {}
-            # console.log member
             @attributes[member.username] = member
             t =
               type: 'userdata'
@@ -90,9 +87,6 @@ module.exports = class BabaScript extends EventEmitter
                 if k is username
                   @attributes[k].attribute[key] = value
                   @events.emit "change_data", @attributes[k]
-                  # @event.on 'change_data', (attr) ->
-                  #   console.log attr
-                  # @event.emit 'change_data', @attributes
         else
           # ここで、ユーザデータを取得する？
           if !_options?.users?
@@ -100,9 +94,7 @@ module.exports = class BabaScript extends EventEmitter
           else
             users = _options.users
           for u in users
-            # console.log u
             @vclients.push @createMediator {username: u}
-            # @workers.push new BabaScript u, _options || {}
         setImmediate =>
           @next()
           @watchCancel()
@@ -118,7 +110,6 @@ module.exports = class BabaScript extends EventEmitter
 
   _do: (key, args)->
     args.cid = @callbackId()
-    console.log key
     @tasks.push {key, args}
     # if !@isProcessing
     # 接続済みか、確認して@next
