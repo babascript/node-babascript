@@ -12,8 +12,6 @@ sys = require "sys"
 _ = require "lodash"
 async = require "async"
 
-class UserDataMediator extends EventEmitter
-
 module.exports = class BabaScript extends EventEmitter
   linda: null
   isProcessing: false
@@ -25,27 +23,23 @@ module.exports = class BabaScript extends EventEmitter
   constructor: (id, @options={})->
     if _.isArray id
       @options.users = id
-      @id = @callbackId()
+      @id = id.join ":"
     else
       # 同じグループで、同時に2つのプログラムが走った時
       # id_#{uuid}にして、同じ処理系統にならないようにする
       # id部分だけ抜き出して、グループ名にすればおｋ
       @id = id
-    @parent = @options?.parent || null
-    @attributes = {}
     @api = @options?.manager || 'http://linda.babascript.org'
     socket = SocketIOClient.connect @api, {'force new connection': true}
     @linda ?= new LindaSocketIOClient().connect socket
+    @attributes = new UserAttribute @linda
     @sts = @linda.tuplespace @id
+    @membersData = []
     @tasks = []
-    @events = new UserDataMediator()
     @linda.io.once "connect", @connect
     @__self = mm @, (key, args) =>
       @methodmissing key, args
     return @__self
-
-  inspect: ->
-    return @
 
   connect: =>
     {host, port} = @linda.io.socket.options
@@ -76,25 +70,24 @@ module.exports = class BabaScript extends EventEmitter
           if !_.isArray members
             members = [members]
           for member in members
+            userAttribute = new UserAttribute @linda
+            userAttribute.__syncStart member
+            @membersData.push userAttribute
+            # @membersData.push new UserAttribute @linda
+            # @membersData[member.username] = new UserAttribute @linda
+            # @membersData[member.username].__syncStart member
             @vclients.push @createMediator member
-            @attributes[member.username] = member
-            t =
-              type: 'userdata'
-            @linda.tuplespace(member.username).watch t, (err, result) =>
-              return if err
-              {key, value, username} = result.data
-              _.each @attributes, (v, k) =>
-                if k is username
-                  @attributes[k].attribute[key] = value
-                  @events.emit "change_data", @attributes[k]
         else
           # ここで、ユーザデータを取得する？
-          if !_options?.users?
-            users = [@id]
-          else
-            users = _options.users
-          for u in users
-            @vclients.push @createMediator {username: u}
+          names = if _options.users? then _options.users else @id
+          request.get("#{host}:#{port}/api/users").send({names: names})
+          .end (err, res) =>
+            if res?.statusCode is 200
+              for u in res.body
+                @vclients.push @createMediator u
+                userAttribute = new UserAttribute @linda
+                userAttribute.__syncStart u
+                @membersData.push userAttribute
         setImmediate =>
           @next()
           @watchCancel()
@@ -115,6 +108,20 @@ module.exports = class BabaScript extends EventEmitter
     # 接続済みか、確認して@next
     @next()
     return args.cid
+
+  addMember: (name) ->
+    {host, port} = @linda.io.socket.options
+    request.get("#{host}:#{port}/api/user/#{name}").end (err, res) =>
+      user = res.body
+      @vclients.push @createMediator user
+      userAttribute = new UserAttribute @linda
+      userAttribute.__syncStart user
+      @membersData.push userAttribute
+
+  removeMember: (name) ->
+    for v in @vclients
+      if v.mediator.name is name
+        v.linda.io.socket.disconnect()
 
   methodmissing: (key, args)->
     return sys.inspect @ if key is "inspect"
@@ -228,10 +235,8 @@ module.exports = class BabaScript extends EventEmitter
         value:  tuple.data.value
         task:   tuple.data._task
         getWorker: ->
-          # console.log @workers
+          options.child = true
           return new BabaScript tuple.data.worker, options || {}
-          # console.log @sts
-          # @getWorker tuple.data.worker
       callback.call @, result
 
   addResult: (cid, callback)=>
@@ -239,26 +244,9 @@ module.exports = class BabaScript extends EventEmitter
       callback null, r
 
   getWorker: (id)->
-    # return new BabaScript id, @options || {}
-    # 自分が持ってなかったら、parentを見に行く
-    # console.log 'instnaceof?'
-    # console.log @ instanceof BabaScript
-    # console.log @workers[0]
-    # return @workers[0] if id is @id
-    # console.log id
-    # console.log @id
-    # if @workers? and @workers.length > 0
-    #   return @parent.getWorker id
-    # else
-    # w = _.find @workers, (w) ->
-    #   console.log w
-    #   return w.id() is id
-    # if !w?
-    #   @workers = [] if !@workers?
-    #   w = new BabaScript id, @options || {}
-    #   # ここで新たなBabascriptを宣言しない方法が必要...
-    #   @workers.push w
-    # return w
+    options = @options
+    options.child = true
+    return new BabaScript id, options || {}
 
   callbackId: ->
     return "#{moment().unix()}_#{Math.random(1000000)}"
@@ -293,3 +281,46 @@ module.exports = class BabaScript extends EventEmitter
     c.on "cancel_task", (result)->
       @mediator.write result
     return c
+
+class UserAttribute extends EventEmitter
+  data: {}
+  isSyncable: false
+  constructor: (@linda) ->
+    super()
+
+  get: (key) ->
+    return if !key?
+    return @data[key]
+
+  __syncStart: (attr) ->
+    return if !attr?
+    @name = attr.username
+    __data = null
+    for key, value of attr
+      if !@get(key)?
+        @set key, value
+      else
+        __data = {} if !__data?
+        __data[key] = value
+    @isSyncable = true
+    @emit "get_data", @data
+    @ts = @linda.tuplespace(@name)
+    @ts.watch {type: 'userdata'}, (err, result) =>
+      return if err
+      {key, value, username} = result.data
+      if username is @name
+        @set key, value
+        @emit "change_data", @data
+    if __data?
+      for key, value of __data
+        @sync key, value
+
+  sync: (key, value) =>
+    @ts.write {type: 'update', key: key, value: value}
+
+  set: (key, value, options={sync: false}) ->
+    return if !key? or !value?
+    if options?.sync and @isSyncable is true
+      @sync key, value
+    else
+      @data[key] = value
