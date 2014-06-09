@@ -110,6 +110,9 @@ module.exports = class BabaScript extends EventEmitter
     return args.cid
 
   addMember: (name) ->
+    for u in @vclients
+      if u.data.username is name
+        return
     {host, port} = @linda.io.socket.options
     request.get("#{host}:#{port}/api/user/#{name}").end (err, res) =>
       user = res.body
@@ -157,16 +160,14 @@ module.exports = class BabaScript extends EventEmitter
           @addResult(cid, c)
       async.parallel h, (err, results)=>
         throw err if err
-        # @cancel cid
-        @emit "#{cid}_callback", results
+        cid = results[0].task.cid
+        @sts.take {type: 'broadcast', cid: cid}, =>
+          console.log 'broadcast destroy'
+          @cancel cid
+          @emit "#{cid}_callback", results
+          @next()
         @isProcessing = false
-        cid = @task.args.cid
-        tt =
-          type: 'broadcast'
-          cid: cid
-        @sts.take tt, ->
-        @task = ''
-        @next()
+        @task = null
     else
       @waitReturn cid, (tuple)=>
         @emit "#{cid}_callback", tuple
@@ -257,11 +258,14 @@ module.exports = class BabaScript extends EventEmitter
     c = new Client @id, @options || {}
     c.data = member
     c.mediator = c.linda.tuplespace member.username
-    c.mediator.watch {type: 'update', what: 'data'}, (err, r) =>
-      key = r.tuple.key
-      c.data[key] = r.tuple.value
+    c.watchCancel = ->
+      @group.watch {baba: "script", type: "cancel"}, (err, tuple) =>
+        console.log tuple
+        @mediator.write tuple.data
     c.on "get_task", (result)->
-      result.type = 'eval'
+      if result.type is 'broadcast'
+        result.type = 'eval'
+        result.oldtype = 'broadcast'
       # console.log 'get_task'
       # console.log result
       @mediator.write result
@@ -279,6 +283,8 @@ module.exports = class BabaScript extends EventEmitter
         # console.log r
         @returnValue r.data.value, {worker: @mediator.name}
     c.on "cancel_task", (result)->
+      console.log 'mediator cancel'
+      console.log result
       @mediator.write result
     return c
 
