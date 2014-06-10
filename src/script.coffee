@@ -90,7 +90,10 @@ module.exports = class BabaScript extends EventEmitter
               for u in res.body
                 @vclients.push @createMediator u
                 userAttribute = new UserAttribute @linda
-                userAttribute.__syncStart u
+                d =
+                  username: u.username
+                  attribute: u.attribute
+                userAttribute.__syncStart d
                 @membersData.push userAttribute
             setImmediate =>
               @events.emit "ready go"
@@ -277,8 +280,13 @@ module.exports = class BabaScript extends EventEmitter
       if result.type is 'broadcast'
         result.type = 'eval'
         result.oldtype = 'broadcast'
-      # console.log 'get_task'
-      # console.log result
+      if @options?.hubot? and !@hubot?
+        type = @options.hubot
+        @hubot = @mediator.linda.tuplespace('waiting_hubot')
+        @hubot.write
+          baba: "script"
+          type: "connect"
+          id: @name
       @mediator.write result
       # ここで、Babascript Client に流すか
       # 外部サービスを利用した形にするか、決定する
@@ -290,9 +298,9 @@ module.exports = class BabaScript extends EventEmitter
       # result.key = result.key + "#{Date.now()}"
       # request.post(url).send(result).end (err, res)  ->
       @mediator.take {cid: result.cid, type: 'return'}, (err, r)=>
-        # console.log 'return value'
-        # console.log r
         @returnValue r.data.value, {worker: @mediator.name}
+        if @hubot?
+          @hubot.write {baba: 'script', type: 'disconnect', id: @mediator.name}
     c.on "cancel_task", (result)->
       console.log 'mediator cancel'
       console.log result
@@ -328,11 +336,13 @@ class UserAttribute extends EventEmitter
       return if err
       {key, value, username} = result.data
       if username is @name
-        @set key, value
-        @emit "change_data", @data
+        if @get(key) isnt value
+          @set key, value
+          @emit "change_data", @data
     if __data?
       for key, value of __data
         @sync key, value
+      __data = null
 
   sync: (key, value) =>
     @ts.write {type: 'update', key: key, value: value}
@@ -340,6 +350,7 @@ class UserAttribute extends EventEmitter
   set: (key, value, options={sync: false}) ->
     return if !key? or !value?
     if options?.sync and @isSyncable is true
-      @sync key, value
+      if @get(key) isnt value
+        @sync key, value
     else
       @data[key] = value
