@@ -1,15 +1,26 @@
 #!/usr/bin/env node
 
-var child_process = require("child_process");
-console.log(child_process);
 
-// var Baba = require("../lib/main");
-// var baba = new Baba.Script("baba");
+
+// var child_process = require("child_process");
+// console.log(child_process);
+//
+
 argv = process.argv;
 if(argv[2] === '-e'){
+  var Babascript = require("../lib/script");
+  var baba = new Babascript("takumibaba", {manager: "localhost:8090"});
+  baba.linda.io.once("connection", function(){
+    console.log(baba)
+  });
   var methodname = argv[3];
-  func = function(result){console.log(result);process.exit()}
-  var child = child_process.fork(func);
+  console.log(baba.exec)
+  baba.exec(methodname, {}, function(result){
+    console.log(result);
+    process.exit()
+  });
+  // func = function(result){console.log(result);process.exit()}
+  // var child = child_process.fork(func);
   // a = function(methodname){
   //   baba.do(methodname, func);
   // }
@@ -18,5 +29,5 @@ if(argv[2] === '-e'){
   // baba.do(methodname, [func]);
   // baba.こんばんわあ(func)
 }else{
-  console.log(process.argv);  
+  console.log(process.argv);
 }

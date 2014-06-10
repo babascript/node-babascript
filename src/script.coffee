@@ -36,6 +36,8 @@ module.exports = class BabaScript extends EventEmitter
     @sts = @linda.tuplespace @id
     @membersData = []
     @tasks = []
+    @events = new UserEvents()
+    EventEmitter.call @events
     @linda.io.once "connect", @connect
     @__self = mm @, (key, args) =>
       @methodmissing key, args
@@ -59,6 +61,7 @@ module.exports = class BabaScript extends EventEmitter
         u = {username: user}
         @vclients.push @createMediator u
       setImmediate =>
+        @events.emit "ready go"
         @next()
         @watchCancel()
     else
@@ -73,10 +76,11 @@ module.exports = class BabaScript extends EventEmitter
             userAttribute = new UserAttribute @linda
             userAttribute.__syncStart member
             @membersData.push userAttribute
-            # @membersData.push new UserAttribute @linda
-            # @membersData[member.username] = new UserAttribute @linda
-            # @membersData[member.username].__syncStart member
             @vclients.push @createMediator member
+          setImmediate =>
+            @events.emit "ready go"
+            @next()
+            @watchCancel()
         else
           # ここで、ユーザデータを取得する？
           names = if _options.users? then _options.users else @id
@@ -88,9 +92,10 @@ module.exports = class BabaScript extends EventEmitter
                 userAttribute = new UserAttribute @linda
                 userAttribute.__syncStart u
                 @membersData.push userAttribute
-        setImmediate =>
-          @next()
-          @watchCancel()
+            setImmediate =>
+              @events.emit "ready go"
+              @next()
+              @watchCancel()
 
   next: ->
     if @tasks.length > 0
@@ -100,6 +105,7 @@ module.exports = class BabaScript extends EventEmitter
   exec: (key, arg, func)->
     args = [arg, func]
     @_do key, args
+    return args
 
   _do: (key, args)->
     args.cid = @callbackId()
@@ -231,13 +237,18 @@ module.exports = class BabaScript extends EventEmitter
   waitReturn: (cid, callback)->
     @sts.take {baba: "script", type: "return", cid: cid}, (err, tuple)=>
       return callback.call @, {value: "cancel"} if err is "cancel"
+      if tuple.value?.error?
+        console.log 'this is throw error message'
       options = @options
       result =
         value:  tuple.data.value
         task:   tuple.data._task
         getWorker: ->
           options.child = true
-          return new BabaScript tuple.data.worker, options || {}
+          if tuple.data.worker is @id
+            return @__self
+          else
+            return new BabaScript tuple.data.worker, options || {}
       callback.call @, result
 
   addResult: (cid, callback)=>
@@ -287,6 +298,8 @@ module.exports = class BabaScript extends EventEmitter
       console.log result
       @mediator.write result
     return c
+
+class UserEvents extends EventEmitter
 
 class UserAttribute extends EventEmitter
   data: {}
