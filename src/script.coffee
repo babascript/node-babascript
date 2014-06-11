@@ -2,8 +2,8 @@ mm = require 'methodmissing'
 http = require 'http'
 Util = require 'util'
 request = require 'superagent'
-# EventEmitter = require("events").EventEmitter
-EventEmitter = require("EventEmitter2").EventEmitter2
+EventEmitter = require("events").EventEmitter
+# EventEmitter = require("EventEmitter2").EventEmitter2
 LindaSocketIOClient = require("linda-socket.io").Client
 SocketIOClient = require "socket.io-client"
 Client = require "../../node-babascript-client/lib/client"
@@ -19,6 +19,10 @@ module.exports = class BabaScript extends EventEmitter
   id: ''
   @create = (id, options={})->
     return new BabaScript id, options
+  @getLinda = (_api)->
+    api = _api || 'http://linda.babascript.org'
+    socket = SocketIOClient.connect api, {'force new connection': true}
+    return new LindaSocketIOClient().connect socket
 
   constructor: (id, @options={})->
     if _.isArray id
@@ -28,6 +32,8 @@ module.exports = class BabaScript extends EventEmitter
       # 同じグループで、同時に2つのプログラムが走った時
       # id_#{uuid}にして、同じ処理系統にならないようにする
       # id部分だけ抜き出して、グループ名にすればおｋ
+      if id is ''
+        id = @callbackId()
       @id = id
     @api = @options?.manager || 'http://linda.babascript.org'
     socket = SocketIOClient.connect @api, {'force new connection': true}
@@ -36,6 +42,7 @@ module.exports = class BabaScript extends EventEmitter
     @sts = @linda.tuplespace @id
     @membersData = []
     @tasks = []
+    @broadcastTasks = []
     @events = new UserEvents()
     EventEmitter.call @events
     @linda.io.once "connect", @connect
@@ -125,9 +132,15 @@ module.exports = class BabaScript extends EventEmitter
     {host, port} = @linda.io.socket.options
     request.get("#{host}:#{port}/api/user/#{name}").end (err, res) =>
       user = res.body
+      console.log '-------'
+      console.log user
+      console.log '-------'
       @vclients.push @createMediator user
       userAttribute = new UserAttribute @linda
-      userAttribute.__syncStart user
+      # d =
+      #   username: user.username
+      #   attribute: user.attribute
+      # userAttribute.__syncStart d
       @membersData.push userAttribute
 
   removeMember: (name) ->
@@ -171,9 +184,9 @@ module.exports = class BabaScript extends EventEmitter
         throw err if err
         cid = results[0].task.cid
         @sts.take {type: 'broadcast', cid: cid}, =>
-          console.log 'broadcast destroy'
           @cancel cid
           @emit "#{cid}_callback", results
+          @broadcastTasks = []
           @next()
         @isProcessing = false
         @task = null
@@ -210,23 +223,35 @@ module.exports = class BabaScript extends EventEmitter
           timeout = moment().add("seconds", v).format(timeFormat)
           tuple.timeout = timeout
           setTimeout =>
-            @cancel cid
-            @sts.cancel @cancelId
+            @cancel cid, @broadcastTasks
+            # @sts.cancel @cancelId
             @cancelId = ''
+            # @emit "#{cid}_callback", @broadcastTasks
           , v
         else
           tuple[k] = v
     return tuple
 
-  cancel: (cid)=>
-    @sts.write {baba: "script", type: "cancel", cid: cid}
+  cancel: (cid, value={error: 'cancel'})=>
+    @sts.write {baba: "script", type: "cancel", cid: cid, value: value}
 
   watchCancel: ->
     @sts.watch {baba: "script", type: "cancel"}, (err, tuple)=>
       throw err if err
       cid = tuple.data.cid
+      v = tuple.data.value
+      if v? and _.isArray v
+        for vv in v
+          return if !vv.__worker
+          a = (id) =>
+            return @getWorker id
+          vv.getWorker = _.bind a, {}, vv.__worker
+      if tuple.data.value?
+        result = v
+      else
+        result = {value: v}
       if @task?.args?.cid is cid
-        @task.args.callback {value: "cancel"}
+        @task.args.callback result
         @task = null
         @isProcessing = false
         @next()
@@ -234,7 +259,7 @@ module.exports = class BabaScript extends EventEmitter
       return if @tasks.length is 0
       for i in [0..@tasks.length-1]
         if @tasks[i].args.cid is cid
-          @tasks[i].args.callback {value: "cancel"}
+          @tasks[i].args.callback result
           @tasks.splice i, 1
 
   waitReturn: (cid, callback)->
@@ -246,6 +271,7 @@ module.exports = class BabaScript extends EventEmitter
       result =
         value:  tuple.data.value
         task:   tuple.data._task
+        __worker: tuple.data.worker
         getWorker: ->
           options.child = true
           if tuple.data.worker is @id
@@ -256,12 +282,16 @@ module.exports = class BabaScript extends EventEmitter
 
   addResult: (cid, callback)=>
     @waitReturn cid, (r)=>
+      @broadcastTasks.push r
       callback null, r
 
-  getWorker: (id)->
+  getWorker: (id)=>
     options = @options
     options.child = true
-    return new BabaScript id, options || {}
+    if id is @id
+      return @__self
+    else
+      return new BabaScript id, options || {}
 
   callbackId: ->
     return "#{moment().unix()}_#{Math.random(1000000)}"
@@ -274,9 +304,9 @@ module.exports = class BabaScript extends EventEmitter
     c.mediator = c.linda.tuplespace member.username
     c.watchCancel = ->
       @group.watch {baba: "script", type: "cancel"}, (err, tuple) =>
-        console.log tuple
         @mediator.write tuple.data
     c.on "get_task", (result)->
+      result.taked = 'virtual'
       if result.type is 'broadcast'
         result.type = 'eval'
         result.oldtype = 'broadcast'
@@ -286,7 +316,12 @@ module.exports = class BabaScript extends EventEmitter
         @hubot.write
           baba: "script"
           type: "connect"
-          id: @name
+          id: @mediator.name
+        if type is 'mail'
+          result.to = @data.attribute?.mail || "s09704tb@gmail.com"
+          console.log result
+      report = {baba: 'script', type: 'report', value: 'taked', tuple: result}
+      @mediator.write report
       @mediator.write result
       # ここで、Babascript Client に流すか
       # 外部サービスを利用した形にするか、決定する
@@ -301,6 +336,7 @@ module.exports = class BabaScript extends EventEmitter
         @returnValue r.data.value, {worker: @mediator.name}
         if @hubot?
           @hubot.write {baba: 'script', type: 'disconnect', id: @mediator.name}
+          @hubot = null
     c.on "cancel_task", (result)->
       console.log 'mediator cancel'
       console.log result

@@ -1,6 +1,6 @@
 {
   "name": "babascript",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "BabaScript for node",
   "main": "./lib/script.js",
   "repository": {
@@ -25,7 +25,6 @@
     "babascript-client": "*"
   },
   "dependencies": {
-    "EventEmitter2": "*",
     "async": "^0.7.0",
     "linda-socket.io": "~0.1.5",
     "lodash": "^2.4.1",
