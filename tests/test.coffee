@@ -4,7 +4,7 @@ path = require "path"
 assert = require "assert"
 Babascript = require path.resolve "./lib/script"
 Client = require "babascript-client"
-_    = require "underscore"
+_    = require "lodash"
 address = 'http://localhost:9080'
 
 describe "client test", ->
