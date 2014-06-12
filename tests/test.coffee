@@ -3,8 +3,7 @@ process.env.NODE_ENV = "test"
 path = require "path"
 assert = require "assert"
 Babascript = require path.resolve "./lib/script"
-Client = require path.resolve "../node-babascript-client/lib/client"
-# Client = require "babascript-client"
+Client = require "babascript-client"
 _    = require "underscore"
 address = 'http://localhost:9080'
 
