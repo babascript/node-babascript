@@ -60,8 +60,7 @@ module.exports = class BabaScript extends EventEmitter
     _options = _.clone @options
     _options.child = true
     if !@options?.manager?
-      @workers = []
-      if !@options?.users?
+      if @options?.users?
         for user in _options.users
           u = {username: user}
           @vclients.push @createMediator u
