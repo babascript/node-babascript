@@ -35,6 +35,8 @@ class BabaScriptBase extends EventEmitter
         id = @callbackId()
       @options.users = [id]
       @id = id
+      # @group = id
+      # @id = "#{id}__#{@callbackId()}"
     @api = @options?.manager || 'http://linda.babascript.org'
     socket = SocketIOClient.connect @api, {'force new connection': true}
     @linda ?= new LindaSocketIOClient().connect socket
@@ -63,7 +65,8 @@ class BabaScriptBase extends EventEmitter
     _options.child = true
     if !@options?.manager?
       if @options?.users?
-        for user in _options.users
+        for user in @options.users
+          return if user is @id
           u = {username: user}
           @vclients.push @createMediator u
       setImmediate =>
