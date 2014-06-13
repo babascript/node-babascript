@@ -11,7 +11,7 @@ sys = require "sys"
 _ = require "lodash"
 async = require "async"
 
-module.exports = class BabaScript extends EventEmitter
+class BabaScriptBase extends EventEmitter
   linda: null
   isProcessing: false
   defaultFormat: 'boolean'
@@ -33,6 +33,7 @@ module.exports = class BabaScript extends EventEmitter
       # id部分だけ抜き出して、グループ名にすればおｋ
       if id is ''
         id = @callbackId()
+      @options.users = [id]
       @id = id
     @api = @options?.manager || 'http://linda.babascript.org'
     socket = SocketIOClient.connect @api, {'force new connection': true}
@@ -45,9 +46,10 @@ module.exports = class BabaScript extends EventEmitter
     @events = new UserEvents()
     EventEmitter.call @events
     @linda.io.once "connect", @connect
-    @__self = mm @, (key, args) =>
-      @methodmissing key, args
-    return @__self
+    return @
+    # @__self = mm @, (key, args) =>
+    #   @methodmissing key, args
+    # return @__self
 
   connect: =>
     {host, port} = @linda.io.socket.options
@@ -121,7 +123,9 @@ module.exports = class BabaScript extends EventEmitter
     @next()
     return args.cid
 
-  addMember: (name) ->
+  addMember: (name) =>
+    console.log @id
+    console.log 'add member'
     for u in @vclients
       if u.data.username is name
         return
@@ -139,8 +143,11 @@ module.exports = class BabaScript extends EventEmitter
           attribute: user.attribute
         userAttribute.__syncStart d
         @membersData.push userAttribute
+      else
+        @vclients.push @createMediator {username: name}
+        console.log @vclients
 
-  removeMember: (name) ->
+  removeMember: (name) =>
     for v, i in @vclients
       if v.mediator.name is name
         v.linda.io.socket.disconnect()
@@ -387,3 +394,11 @@ class UserAttribute extends EventEmitter
         @sync key, value
     else
       @data[key] = value
+
+module.exports = class BabaScript extends BabaScriptBase
+
+  constructor: (id, options) ->
+    super id, options
+    @__self = mm @, (key, args) =>
+      @methodmissing key, args
+    return @__self

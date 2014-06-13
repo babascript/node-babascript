@@ -234,8 +234,8 @@ describe "client test", ->
       console.log "baba"
       @returnValue 1
 
-    clientaYamada = new Client space_yamada
-    clientaYamada.on "get_task", ->
+    clientYamada = new Client space_yamada
+    clientYamada.on "get_task", ->
       console.log "yamada"
       @returnValue 2
 
@@ -246,20 +246,26 @@ describe "client test", ->
       v = result.value
       assert.equal id, space_baba
       assert.equal v, 1
-      console.log 'this?'
       members.addMember space_yamada
-      console.log 'this???'
       members.add_member_broadcast {broadcast: 2}, (results) ->
-        console.log 'results'
-        for result in results
-          id = result.getWorker().id
-          v = result.value
-          if id is space_baba
-            assert.equal v, 1
-          else if ids is space_yamada
-            assert.equal v, 2
-          else
-            assert.fail()
+        assert.equal results.length, 2
+        console.log results
+        id1 = result[0].getWorker().id
+        v1 = result[0].value
+        if id1 is space_baba
+          assert.equal v, 1
+          nextValue = 2
+          nextId = space_yamada
+        else if id1 is space_yamada
+          assert.equal v, 2
+          nextValue = 1
+          nextId = space_baba
+        else
+          assert.fail()
+        id2 = result[1].getWorker().id
+        v2 = result[1].value
+        assert.equal nextId, id2
+        assert.equal nextValue, v2
         done()
 
   it 'team test', (done) ->
