@@ -62,14 +62,13 @@ module.exports = class BabaScript extends EventEmitter
     if !@options?.manager?
       @workers = []
       if !@options?.users?
-        _options.users = [@id]
-      for user in _options.users
-        u = {username: user}
-        @vclients.push @createMediator u
+        for user in _options.users
+          u = {username: user}
+          @vclients.push @createMediator u
       setImmediate =>
-        @events.emit "ready go"
         @next()
         @watchCancel()
+        @events.emit "ready go"
     else
       request.get("#{host}:#{port}/api/group/#{@id}/member").end (err, res) =>
         if res?.statusCode is 200
@@ -94,18 +93,17 @@ module.exports = class BabaScript extends EventEmitter
           .end (err, res) =>
             if res?.statusCode is 200
               for u in res.body
-                @vclients.push @createMediator u
                 userAttribute = new UserAttribute @linda
                 d =
                   username: u.username
                   attribute: u.attribute
                 userAttribute.__syncStart d
+                @vclients.push @createMediator d
                 @membersData.push userAttribute
             setImmediate =>
-              @events.emit "ready go"
               @next()
               @watchCancel()
-
+              @events.emit "ready go"
   next: ->
     if @tasks.length > 0
       @task = @tasks.shift()
@@ -130,22 +128,24 @@ module.exports = class BabaScript extends EventEmitter
         return
     {host, port} = @linda.io.socket.options
     request.get("#{host}:#{port}/api/user/#{name}").end (err, res) =>
-      user = res.body
-      console.log '-------'
-      console.log user
-      console.log '-------'
-      @vclients.push @createMediator user
-      userAttribute = new UserAttribute @linda
-      # d =
-      #   username: user.username
-      #   attribute: user.attribute
-      # userAttribute.__syncStart d
-      @membersData.push userAttribute
+      if res.statusCode is 200
+        user = res.body
+        console.log '-------'
+        console.log user
+        console.log '-------'
+        @vclients.push @createMediator user
+        userAttribute = new UserAttribute @linda
+        d =
+          username: user.username
+          attribute: user.attribute
+        userAttribute.__syncStart d
+        @membersData.push userAttribute
 
   removeMember: (name) ->
-    for v in @vclients
+    for v, i in @vclients
       if v.mediator.name is name
         v.linda.io.socket.disconnect()
+      delete @vclients[i]
 
   methodmissing: (key, args)->
     return sys.inspect @ if key is "inspect"
@@ -223,9 +223,8 @@ module.exports = class BabaScript extends EventEmitter
           tuple.timeout = timeout
           setTimeout =>
             @cancel cid, @broadcastTasks
-            # @sts.cancel @cancelId
+            @sts.cancel @cancelId # TODO インスタンス変数やめろ
             @cancelId = ''
-            # @emit "#{cid}_callback", @broadcastTasks
           , v
         else
           tuple[k] = v
@@ -267,6 +266,7 @@ module.exports = class BabaScript extends EventEmitter
       if tuple.value?.error?
         console.log 'this is throw error message'
       options = @options
+      worker = tuple.data.worker
       result =
         value:  tuple.data.value
         task:   tuple.data._task
@@ -297,7 +297,6 @@ module.exports = class BabaScript extends EventEmitter
 
   createMediator: (member) ->
     # ここで、クライアントのフィルタリングしても良い
-    # 追加/削除もイベント発行で、みたいな
     c = new Client @id, @options || {}
     c.data = member
     c.mediator = c.linda.tuplespace member.username
