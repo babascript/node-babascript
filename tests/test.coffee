@@ -196,19 +196,71 @@ describe "client test", ->
     space_baba = "multi_player_v_baba"
     space_yamada = "multi_player_v_yamada"
 
-    babayamada = new Babascript [space_baba, space_yamada], {manager: address}
+    babayamada = new Babascript [space_baba, space_yamada]
 
-    clientBaba = new Client space_baba, {manager: address}
+    clientBaba = new Client space_baba
     clientBaba.on "get_task", ->
-      @returnValue true
+      @returnValue false
 
-    clientaYamada = new Client space_yamada, {manager: address}
+    clientaYamada = new Client space_yamada
     clientaYamada.on "get_task", ->
       @returnValue true
 
     babayamada.multi_player_in_one_variable {format: 'boolean'}, (result) ->
-      console.log result
-      done()
+      id = result.getWorker().id
+      nextReturnerId = null
+      nextReturne = null
+      if id is space_baba
+        assert.ok !result.value
+        nextReturnerId = space_yamada
+        nextReturn = true
+      else if id is space_yamada
+        assert.ok result.value
+        nextReturnerId = space_baba
+        nextReturn = false
+      else
+        assert.fail()
+      babayamada.multi_player_in_one_variable2 {format: 'boolean'}, (result) ->
+        assert.equal result.getWorker().id, nextReturnerId
+        assert.equal result.value, nextReturn
+        done()
+
+  it 'add member', (done) ->
+    space_baba = "add_member_baba"
+    space_yamada = "add_member_yamada"
+
+    clientBaba = new Client space_baba
+    clientBaba.on "get_task", ->
+      console.log "baba"
+      @returnValue 1
+
+    clientaYamada = new Client space_yamada
+    clientaYamada.on "get_task", ->
+      console.log "yamada"
+      @returnValue 2
+
+    members = new Babascript space_baba
+
+    members.add_member_test {}, (result) ->
+      id = result.getWorker().id
+      v = result.value
+      assert.equal id, space_baba
+      assert.equal v, 1
+      console.log 'this?'
+      members.addMember space_yamada
+      console.log 'this???'
+      members.add_member_broadcast {broadcast: 2}, (results) ->
+        console.log 'results'
+        for result in results
+          id = result.getWorker().id
+          v = result.value
+          if id is space_baba
+            assert.equal v, 1
+          else if ids is space_yamada
+            assert.equal v, 2
+          else
+            assert.fail()
+        done()
 
   it 'team test', (done) ->
     done()
