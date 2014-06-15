@@ -109,7 +109,9 @@ class BabaScriptBase extends EventEmitter
               @watchCancel()
               @events.emit "ready go"
   next: ->
-    if @tasks.length > 0
+    # 人数次第で、適当に分けるようにできないか
+    if @tasks.length > 0#and !@isProcessing
+      console.log @tasks
       @task = @tasks.shift()
       @humanExec @task.key, @task.args
 
@@ -127,8 +129,6 @@ class BabaScriptBase extends EventEmitter
     return args.cid
 
   addMember: (name) =>
-    console.log @id
-    console.log 'add member'
     for u in @vclients
       if u.data.username is name
         return
@@ -154,7 +154,7 @@ class BabaScriptBase extends EventEmitter
     for v, i in @vclients
       if v.mediator.name is name
         v.linda.io.socket.disconnect()
-      delete @vclients[i]
+        @vclients.splice i, 1
 
   methodmissing: (key, args)->
     return sys.inspect @ if key is "inspect"
@@ -199,7 +199,14 @@ class BabaScriptBase extends EventEmitter
         @isProcessing = false
         @task = null
     else
+      cancelid = @sts.take {type:'cancel', cid: cid}, (err, tuple)=>
+        @emit "#{cid}_callback", tuple
+        @isProcessing = true
+        @next()
+      console.log "before key is #{key}, cancelid is#{cancelid}"
       @waitReturn cid, (tuple)=>
+        @sts.cancel cancelid
+        console.log "after key is #{tuple.task.key}, cancelid is#{cancelid}"
         @emit "#{cid}_callback", tuple
         @isProcessing = false
         @next()
