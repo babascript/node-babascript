@@ -12,6 +12,7 @@ yamada = new Baba "yamada", {manager: "http://localhost:9080"}
 
 yamada.events.on "ready go", ->
   console.log yamada.attributes.get("yamada")
+  console.log yamada.membernames
   yamada.attributes.get("yamada").on "change_data", (data) ->
     console.log "change_data"
     console.log data

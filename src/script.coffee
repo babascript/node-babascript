@@ -35,28 +35,26 @@ class BabaScriptBase extends EventEmitter
         id = @callbackId()
       @options.users = [id]
       @id = id
-      # @group = id
-      # @id = "#{id}__#{@callbackId()}"
     @api = @options?.manager || 'http://linda.babascript.org'
     socket = SocketIOClient.connect @api, {'force new connection': true}
     @linda ?= new LindaSocketIOClient().connect socket
-    @attributes = new UserAttribute @linda
+    @attributes = new UserAttributeWrapper()
     @sts = @linda.tuplespace @id
+    @notification = @linda.tuplespace "notification"
     @membersData = []
+    @membernames = []
     @tasks = []
     @broadcastTasks = []
     @events = new UserEvents()
     EventEmitter.call @events
     @linda.io.once "connect", @connect
     return @
-    # @__self = mm @, (key, args) =>
-    #   @methodmissing key, args
-    # return @__self
 
   connect: =>
     {host, port} = @linda.io.socket.options
     @vclients = []
     @workers = []
+    origin = "#{host}:#{port}"
     if @options.child is true
       return setImmediate =>
         @next()
@@ -74,26 +72,35 @@ class BabaScriptBase extends EventEmitter
         @watchCancel()
         @events.emit "ready go"
     else
-      request.get("#{host}:#{port}/api/group/#{@id}/member").end (err, res) =>
+      request.get("#{origin}/api/group/#{@id}/member").end (err, res) =>
         if res?.statusCode is 200
           members = []
           for user in res.body
             members.push user
           if !_.isArray members
             members = [members]
-          for member in members
+          for member in res.body
+            {username, attribute} = member
+            u =
+              username: username
+              attribute: attribute
             userAttribute = new UserAttribute @linda
-            userAttribute.__syncStart member
+            userAttribute.__syncStart u
             @membersData.push userAttribute
+            @attributes.add userAttribute
             @vclients.push @createMediator member
+            @membernames.push username
           setImmediate =>
-            @events.emit "ready go"
             @next()
             @watchCancel()
+            @events.emit "ready go"
+            request.post("#{host}:#{port}/api/notification")
+            .send({users: @membernames}).end (err, res) ->
+
         else
           # ここで、ユーザデータを取得する？
           names = if _options.users? then _options.users else @id
-          request.get("#{host}:#{port}/api/users").send({names: names})
+          request.get("#{origin}/api/users").send({names: names})
           .end (err, res) =>
             if res?.statusCode is 200
               for u in res.body
@@ -104,14 +111,17 @@ class BabaScriptBase extends EventEmitter
                 userAttribute.__syncStart d
                 @vclients.push @createMediator d
                 @membersData.push userAttribute
+                @attributes.add userAttribute
+                @membernames.push u.username
             setImmediate =>
               @next()
               @watchCancel()
               @events.emit "ready go"
+              request.post("#{host}:#{port}/api/notification")
+              .send({users: @membernames}).end (err, res) ->
   next: ->
     # 人数次第で、適当に分けるようにできないか
     if @tasks.length > 0#and !@isProcessing
-      console.log @tasks
       @task = @tasks.shift()
       @humanExec @task.key, @task.args
 
@@ -133,7 +143,8 @@ class BabaScriptBase extends EventEmitter
       if u.data.username is name
         return
     {host, port} = @linda.io.socket.options
-    request.get("#{host}:#{port}/api/user/#{name}").end (err, res) =>
+    origin = "#{host}:#{port}"
+    request.get("#{origin}/api/user/#{name}").end (err, res) =>
       if res.statusCode is 200
         user = res.body
         console.log '-------'
@@ -146,6 +157,10 @@ class BabaScriptBase extends EventEmitter
           attribute: user.attribute
         userAttribute.__syncStart d
         @membersData.push userAttribute
+        @attributes.add userAttribute
+        @membernames.push user.username
+        request.post("#{host}:#{port}/api/notification")
+        .send({users: user.username}).end (err, res) ->
       else
         @vclients.push @createMediator {username: name}
         console.log @vclients
@@ -155,6 +170,10 @@ class BabaScriptBase extends EventEmitter
       if v.mediator.name is name
         v.linda.io.socket.disconnect()
         @vclients.splice i, 1
+    @attributes.remove name
+    for v, i in @membernames
+      if v is name
+        @membernames.splice i, 1
 
   methodmissing: (key, args)->
     return sys.inspect @ if key is "inspect"
@@ -181,8 +200,9 @@ class BabaScriptBase extends EventEmitter
     else
       callback = ->
     @once "#{cid}_callback", callback
-    @sts.write tuple
+    # @sts.write tuple
     r = null
+    cancelId = ""
     if tuple.type is "broadcast"
       h = []
       for i in [0..tuple.count]
@@ -203,13 +223,13 @@ class BabaScriptBase extends EventEmitter
         @emit "#{cid}_callback", tuple
         @isProcessing = true
         @next()
-      console.log "before key is #{key}, cancelid is#{cancelid}"
-      @waitReturn cid, (tuple)=>
+      cancelId = @waitReturn cid, (tuple)=>
         @sts.cancel cancelid
-        console.log "after key is #{tuple.task.key}, cancelid is#{cancelid}"
         @emit "#{cid}_callback", tuple
         @isProcessing = false
         @next()
+    tuple.cancelId = cancelId
+    @sts.write tuple
     return cid
 
   createTupleWithOption: (key, cid, option)->
@@ -224,6 +244,7 @@ class BabaScriptBase extends EventEmitter
       key: key
       cid: cid || option.cid
       format: option.format || @defaultFormat
+      at: Date.now()
     return tuple if typeof option is "function"
     for k, v of option
       switch k
@@ -277,7 +298,7 @@ class BabaScriptBase extends EventEmitter
           @tasks.splice i, 1
 
   waitReturn: (cid, callback)->
-    @sts.take {baba: "script", type: "return", cid: cid}, (err, tuple)=>
+    return @sts.take {baba: "script", type: "return", cid: cid}, (err, tuple)=>
       return callback.call @, {value: "cancel"} if err is "cancel"
       if tuple.value?.error?
         console.log 'this is throw error message'
@@ -359,6 +380,22 @@ class BabaScriptBase extends EventEmitter
 
 class UserEvents extends EventEmitter
 
+class UserAttributeWrapper extends EventEmitter
+  data: []
+  add: (attribute) ->
+    return if !attribute?
+    @data.push attribute
+
+  get: (name) ->
+    for d in @data
+      return d if d.name is name
+    return null
+
+  remove: (name) ->
+    for d, i in @data
+      @data.split i, 1 if d.name is name
+    return null
+
 class UserAttribute extends EventEmitter
   data: {}
   isSyncable: false
@@ -369,11 +406,11 @@ class UserAttribute extends EventEmitter
     return if !key?
     return @data[key]
 
-  __syncStart: (attr) ->
-    return if !attr?
-    @name = attr.username
+  __syncStart: (_data) ->
+    return if !_data?
+    @name = _data.username
     __data = null
-    for key, value of attr
+    for key, value of _data.attribute
       if !@get(key)?
         @set key, value
       else
@@ -386,8 +423,9 @@ class UserAttribute extends EventEmitter
       return if err
       {key, value, username} = result.data
       if username is @name
-        if @get(key) isnt value
-          @set key, value
+        v = @get key
+        if v isnt value
+          @set key, value, {sync: false}
           @emit "change_data", @data
     if __data?
       for key, value of __data
@@ -399,7 +437,7 @@ class UserAttribute extends EventEmitter
 
   set: (key, value, options={sync: false}) ->
     return if !key? or !value?
-    if options?.sync and @isSyncable is true
+    if options?.sync is true and @isSyncable is true
       if @get(key) isnt value
         @sync key, value
     else
