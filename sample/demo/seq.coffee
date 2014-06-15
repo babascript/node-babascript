@@ -1,2 +1,0 @@
-{BabaScript} = require "../../lib/babascript"
-

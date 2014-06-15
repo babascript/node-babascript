@@ -4,4 +4,4 @@ list/
 node_modules
 .DS_Store
 npm-debug.log
-
+test_sample/
