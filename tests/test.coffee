@@ -6,8 +6,9 @@ Babascript = require path.resolve "./lib/script"
 Client = require "babascript-client"
 _    = require "lodash"
 address = 'http://localhost:9080'
+# request = require 'supertest'
 
-describe "client test", ->
+describe "normal babascript test", ->
 
   it "valid initialize", (done)->
     baba = new Babascript "baba"
@@ -267,6 +268,105 @@ describe "client test", ->
         assert.equal nextValue, v2
         done()
 
+  it "members add member", (done) ->
+    space_baba = "members_add_member_baba"
+    space_yamada = "members_add_member_yamada"
+    space_tanaka = "members_add_member_tanaka"
+
+    clientBaba = new Client space_baba
+    clientBaba.on "get_task", ->
+      console.log "baba"
+      @returnValue 1
+
+    clientYamada = new Client space_yamada
+    clientYamada.on "get_task", ->
+      console.log "yamada"
+      @returnValue 2
+
+    clientTanaka = new Client space_tanaka
+    clientTanaka.on "get_task", ->
+      console.log "tanaka"
+      @returnValue 3
+
+    members = new Babascript [space_baba, space_yamada]
+    members.add_member {}, (result) ->
+      id = result.getWorker().id
+      v = result.value
+      if id is space_baba
+        assert.equal v, 1
+      else if id is space_yamada
+        assert.equal v, 2
+      else
+        assert.fail()
+      members.addMember space_tanaka
+      members.add_member_broadcast {broadcast: 3}, (results) ->
+        console.log results
+        done()
+
+  it 'remove member', (done) ->
+    space_baba = "members_remove_member_baba"
+    space_yamada = "members_remove_member_yamada"
+    space_tanaka = "members_remove_member_tanaka"
+
+    clientBaba = new Client space_baba
+    clientBaba.on "get_task", ->
+      console.log "baba"
+      @returnValue 1
+
+    clientYamada = new Client space_yamada
+    clientYamada.on "get_task", ->
+      console.log "yamada"
+      @returnValue 2
+
+    clientTanaka = new Client space_tanaka
+    clientTanaka.on "get_task", ->
+      console.log "tanaka"
+      @returnValue 3
+
+    members = new Babascript [space_baba, space_yamada, space_tanaka]
+    members.check_current_member {broadcast: 3}, (results) ->
+      assert.equal results.length, 3
+      members.removeMember space_tanaka
+      assert.equal members.vclients.length, 2
+      members.check_removed_current_member {broadcast: 3, timeout: 3000}, (results) ->
+        assert.equal results.length, 2
+        id = results[0].getWorker().id
+        v = results[0].value
+        if id is space_baba
+          assert.equal v, 1
+          nextid = space_yamada
+          nextv = 2
+        else if id is space_yamada
+          assert.equal v, 2
+          nextid = space_baba
+          nextv = 1
+        else
+          assert.fail()
+        assert.equal results[1].getWorker().id, nextid
+        assert.equal results[1].value, nextv
+        assert.equal results[2], null
+        done()
+
+# Manager使ったやつのテストも書く
+describe "use babascript-manager", ->
+  manager = require path.resolve 'tests', 'managerapp'
+  host = "localhost"
+  port = 5000
+  token = ""
+  before (done)->
+    # request(manager).post("/api/session/login")
+    # .send({username: "baba_test_name", password: "baba_test_pass"})
+    # .end (err, res) ->
+    #   token = res.token
+    done()
+  after (done) ->
+    done()
+
+  it "token ok", (done) ->
+      space = "baba_test_name"
+      baba = new Babascript space, {manager: "#{host}:#{port}", token: token}
+      baba.linda.io.once "connect", ->
+        done()
   it 'team test', (done) ->
     done()
   # it "virtual client test", (done) ->

@@ -1,7 +1,7 @@
-Baba = require "../../lib/main"
+Baba = require "../../lib/script"
 
-manager = new Baba.Manager "masuilab"
-baba = new Baba.Script manager
+# manager = new Baba.Manager "baba"
+baba = new Baba "baba"
 
 n = 5
 

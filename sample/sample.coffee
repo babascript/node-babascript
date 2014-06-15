@@ -1,7 +1,7 @@
 Babascript = require "../lib/script"
 EventEmitter = require('events').EventEmitter
 _  = require 'lodash'
-baba = new Babascript 'baaa', {manager: "http://localhost:9080"}#, hubot: 'mail'}
+baba = new Babascript 'baba', {manager: "http://localhost:9080"}#, hubot: 'mail'}
 id = ""
 baba.おはよう (result) ->
   console.log result.value
