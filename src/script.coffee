@@ -24,215 +24,96 @@ class BabaScriptBase extends EventEmitter
     return new LindaSocketIOClient().connect socket
 
   constructor: (id, @options={})->
-    if _.isArray id
-      @options.users = id
-      @id = id.join ":"
-    else
-      # 同じグループで、同時に2つのプログラムが走った時
-      # id_#{uuid}にして、同じ処理系統にならないようにする
-      # id部分だけ抜き出して、グループ名にすればおｋ
-      if id is ''
-        id = @callbackId()
-      @options.users = [id]
-      @id = id
     @api = @options?.manager || 'http://linda.babascript.org'
     socket = SocketIOClient.connect @api, {'force new connection': true}
     @linda ?= new LindaSocketIOClient().connect socket
-    @attributes = new UserAttributeWrapper()
-    @sts = @linda.tuplespace @id
-    @notification = @linda.tuplespace "notification"
-    @membersData = []
-    @membernames = []
+    if _.isArray id
+      @id = id.join "::"
+      @sts = []
+      for i in id
+        @sts.push @linda.tuplespace i
+    else
+      @id = id
+      @sts = [@linda.tuplespace @id]
     @tasks = []
-    @broadcastTasks = []
-    @events = new UserEvents()
-    EventEmitter.call @events
+    @f = {}
+    @execTasks = []
+    @broadcastTasks = {}
     @linda.io.on "connect", @connect
     return @
 
   connect: =>
-    {host, port} = @linda.io.socket.options
-    @vclients = []
-    @workers = []
-    origin = "#{host}:#{port}"
-    if @options.child is true
-      return setImmediate =>
-        @next()
-        @watchCancel()
-    _options = _.clone @options
-    _options.child = true
-    if !@options?.manager?
-      if @options?.users?
-        for user in @options.users
-          return if user is @id
-          u = {username: user}
-          @vclients.push @createMediator u
-      setImmediate =>
-        @next()
-        @watchCancel()
-        @events.emit "ready go"
-    else
-      request.get("#{origin}/api/group/#{@id}/member").end (err, res) =>
-        if res?.statusCode is 200
-          members = []
-          for user in res.body
-            members.push user
-          if !_.isArray members
-            members = [members]
-          for member in res.body
-            {username, attribute} = member
-            u =
-              username: username
-              attribute: attribute
-            userAttribute = new UserAttribute @linda
-            userAttribute.__syncStart u
-            @membersData.push userAttribute
-            @attributes.add userAttribute
-            @vclients.push @createMediator member
-            @membernames.push username
-          setImmediate =>
-            @next()
-            @watchCancel()
-            @events.emit "ready go"
-            request.post("#{host}:#{port}/api/notification")
-            .send({users: @membernames}).end (err, res) ->
+    @next()
 
-        else
-          # ここで、ユーザデータを取得する？
-          names = if _options.users? then _options.users else @id
-          request.get("#{origin}/api/users").send({names: names})
-          .end (err, res) =>
-            if res?.statusCode is 200
-              for u in res.body
-                userAttribute = new UserAttribute @linda
-                d =
-                  username: u.username
-                  attribute: u.attribute
-                userAttribute.__syncStart d
-                @vclients.push @createMediator d
-                @membersData.push userAttribute
-                @attributes.add userAttribute
-                @membernames.push u.username
-            setImmediate =>
-              @next()
-              @watchCancel()
-              @events.emit "ready go"
-              request.post("#{host}:#{port}/api/notification")
-              .send({users: @membernames}).end (err, res) ->
   next: ->
     # 人数次第で、適当に分けるようにできないか
-    if @tasks.length > 0#and !@isProcessing
-      @task = @tasks.shift()
-      @humanExec @task.key, @task.args
+    if @tasks.length > 0
+      task = @tasks.shift()
+      @execTasks.push task
+      @humanExec task.key, task.args
 
-  exec: (key, arg, func)->
-    args = [arg, func]
+  exec: (key, args, func)->
+    args.callback = func
     @_do key, args
 
   methodmissing: (key, args)->
-    return sys.inspect @ if key is "inspect"
+    if key is "inspect"
+      return sys.inspect {}, { showHidden: true, depth: 2}
     args.callback = args[args.length - 1]
     @_do key, args
 
   _do: (key, args)->
     args.cid = @callbackId()
     @tasks.push {key, args}
-    # if !@isProcessing
-    # 接続済みか、確認して@next
     @next()
-    return args.cid
-
-  addMember: (name) =>
-    for u in @vclients
-      if u.data.username is name
-        return
-    {host, port} = @linda.io.socket.options
-    origin = "#{host}:#{port}"
-    request.get("#{origin}/api/user/#{name}").end (err, res) =>
-      if res.statusCode is 200
-        user = res.body
-        # console.log '-------'
-        # console.log user
-        # console.log '-------'
-        @vclients.push @createMediator user
-        userAttribute = new UserAttribute @linda
-        d =
-          username: user.username
-          attribute: user.attribute
-        userAttribute.__syncStart d
-        @membersData.push userAttribute
-        @attributes.add userAttribute
-        @membernames.push user.username
-        request.post("#{host}:#{port}/api/notification")
-        .send({users: user.username}).end (err, res) ->
-      else
-        @vclients.push @createMediator {username: name}
-        # console.log @vclients
-
-  removeMember: (name) =>
-    console.log "remove member"
-    for v, i in @vclients
-      if v? and v.mediator.name is name
-        v.linda.io.socket.disconnect()
-        @vclients.splice i, 1
-    @attributes.remove name
-    for v, i in @membernames
-      if v? and v is name
-        @membernames.splice i, 1
-
-
-    # if @tasks.length is 0 and !@isProcessing and @linda.io.socket.connecting
-    #   @humanExec key, args
-    # else
-    #   @tasks.push {key, args}
-    # if @linda.io.socket.connecting?
-    #   if @tasks.length > 0
-    #     @tasks.push {key, args}
-    #   else
-    #     @humanExec(key, args)
-    # else
-    #   @tasks.push {key, args}
 
   humanExec: (key, args)->
     @isProcessing = true
-    cid = args.cid
+    cid = @callbackId()
     tuple = @createTupleWithOption key, cid, args[0]
     if typeof args[args.length - 1] is "function"
       callback = args[args.length - 1]
+    else if typeof args.callback is "function"
+      callback = args.callback
     else
       callback = ->
     @once "#{cid}_callback", callback
-    r = null
-    cancelId = ""
-    tuple.cancelId = cancelId
-    @sts.write tuple
     if tuple.type is "broadcast"
       h = []
+      @f[cid] = []
+      @broadcastTasks[cid] = []
       for i in [0..tuple.count]
-        h.push (c)=>
-          @addResult(cid, c)
+        h.push (c) =>
+          @f[cid].push c
+        @addResult(cid)
       async.parallel h, (err, results)=>
         throw err if err
         cid = results[0].task.cid
-        @sts.take {type: 'broadcast', cid: cid}, =>
-          @cancel cid
+        @f[cid] = null
+        for ts in @sts
+          ts.take {type: 'broadcast', cid: cid}, =>
+            @cancel cid
+            @broadcastTasks[cid] = null
+        setImmediate =>
           @emit "#{cid}_callback", results
-          @broadcastTasks = []
           @next()
-        @isProcessing = false
-        @task = null
+          @isProcessing = false
+      for ts in @sts
+        ts.write tuple
     else
-      cancelid = @sts.take {type:'cancel', cid: cid}, (err, tuple)=>
+      ts = @sts.shift()
+      ts.write tuple
+      cancelid = ts.take {type:'cancel', cid: cid}, (err, tuple)=>
         return err if err
         @emit "#{cid}_callback", tuple
-        @isProcessing = true
+        @isProcessing = false
         @next()
-      @waitReturn cid, (tuple)=>
-        @sts.cancel cancelid
+      @waitReturn ts, cid, (tuple) =>
+        ts.cancel cancelid
         @emit "#{cid}_callback", tuple
         @isProcessing = false
         @next()
-        @task = null
+      @sts.push ts
     return cid
 
   createTupleWithOption: (key, cid, option)->
@@ -258,109 +139,105 @@ class BabaScriptBase extends EventEmitter
           tuple.type = "unicast"
           tuple.unicast = v
         when "timeout"
-          timeFormat = "YYYY-MM-DD HH:mm:ss"
-          timeout = moment().add("seconds", v).format(timeFormat)
-          tuple.timeout = timeout
           setTimeout =>
-            @cancel cid, @broadcastTasks
-            @sts.cancel @cancelId # TODO インスタンス変数やめろ
+            @cancel cid, @broadcastTasks[cid]
+            for ts in @sts
+              ts.cancel @cancelId # TODO インスタンス変数やめろ
             @cancelId = ''
+            @emit "#{cid}_callback", @broadcastTasks[cid]
           , v
         else
           tuple[k] = v
     return tuple
 
-  cancel: (cid, value={error: 'cancel'})=>
-    @sts.write {baba: "script", type: "cancel", cid: cid, value: value}
+  cancel: (cid, value={error: 'cancel'}) =>
+    for ts in @sts
+      ts.write {baba: "script", type: "cancel", cid: cid, value: value}
 
   watchCancel: ->
-    @sts.watch {baba: "script", type: "cancel"}, (err, tuple)=>
-      throw err if err
-      cid = tuple.data.cid
-      v = tuple.data.value
-      if v? and _.isArray v
-        for vv in v
-          return if !vv.__worker
-          a = (id) =>
-            return @getWorker id
-          vv.getWorker = _.bind a, {}, vv.__worker
-      if tuple.data.value?
-        result = v
-      else
-        result = {value: v}
-      if @task?.args?.cid is cid
-        @task.args.callback result
-        @task = null
-        @isProcessing = false
-        @next()
-        return
-      return if @tasks.length is 0
-      for i in [0..@tasks.length-1]
-        if @tasks[i].args.cid is cid
-          @tasks[i].args.callback result
-          @tasks.splice i, 1
+    for ts in @sts
+      ts.watch {baba: "script", type: "cancel"}, (err, tuple)=>
+        throw err if err
+        cid = tuple.data.cid
+        value = tuple.data.value
+        # if _.isArray value
+        #   for vv in v
+        #     return if !vv.__worker
+        #     a = (id) =>
+        #       return @getWorker id
+        #     vv.getWorker = _.bind a, {}, vv.__worker
+        # else
+        #
+        if value?
+          result = value
+        else
+          result = {value: v}
+        @emit "#{cid}_callback", result
 
-  waitReturn: (cid, callback)->
-    @sts.take {baba: "script", type: "return", cid: cid}, (err, tuple)=>
+  waitReturn: (ts, cid, callback)->
+    ts.take {baba: "script", type: "return", cid: cid}, (err, tuple) =>
       return callback.call @, {value: "cancel"} if err is "cancel"
       if tuple.value?.error?
-        console.log 'this is throw error message'
-      options = @options
+        console.log 'error'
       worker = tuple.data.worker
       result =
         value:  tuple.data.value
         task:   tuple.data._task
-        __worker: tuple.data.worker
+        __worker: worker
         getWorker: ->
-          options.child = true
-          if tuple.data.worker is @id
+          if worker is @id
             return @__self
           else
-            return new BabaScript tuple.data.worker, options || {}
+            return new BabaScript worker, {}
       callback.call @, result
 
-  addResult: (cid, callback)=>
-    @waitReturn cid, (r)=>
-      @broadcastTasks.push r
-      callback null, r
-
-  getWorker: (id)=>
-    options = @options
-    options.child = true
-    if id is @id
-      return @__self
-    else
-      return new BabaScript id, options || {}
+  addResult: (cid)=>
+    for ts in @sts
+      @waitReturn ts, cid, (r) =>
+        @broadcastTasks[cid].push r
+        callback = @f[cid].shift()
+        callback null, r
 
   callbackId: ->
     return "#{moment().unix()}_#{Math.random(1000000)}"
 
-  createMediator: (member) ->
-    # ここで、クライアントのフィルタリングしても良い
-    c = new Client @id, @options || {}
-    c.data = member
-    c.mediator = c.linda.tuplespace member.username
-    c.watchCancel = ->
-      @group.watch {baba: "script", type: "cancel"}, (err, tuple) =>
-        @mediator.write tuple.data
-    c.on "get_task", (result)->
-      result.taked = 'virtual'
-      if result.type is 'broadcast'
-        result.type = 'eval'
-        result.oldtype = 'broadcast'
-      if @options?.hubot? and !@hubot?
-        type = @options.hubot
-        @hubot = @mediator.linda.tuplespace('waiting_hubot')
-        @hubot.write
-          baba: "script"
-          type: "connect"
-          id: @mediator.name
-        if type is 'mail'
-          result.to = @data.attribute?.mail || "s09704tb@gmail.com"
-          console.log result
-      report = {baba: 'script', type: 'report', value: 'taked', tuple: result}
-      @mediator.write report
-      @mediator.write result
+  addMember: (name) =>
+    @sts.push @linda.tuplespace(name)
+
+  removeMember: (name) =>
+    for ts, i in @sts
+      if ts.name is name
+        @sts.splice i, 1
+
+  # createMediator: (member) ->
+  #   # ここで、クライアントのフィルタリングしても良い
+  #   c = new Client @id, @options || {}
+  #   c.data = member
+  #   c.mediator = c.linda.tuplespace member.username
+  #   c.watchCancel = ->
+  #     @group.watch {baba: "script", type: "cancel"}, (err, tuple) =>
+  #       @mediator.write tuple.data
+  #   c.on "get_task", (result)->
+  #     result.taked = 'virtual'
+  #     if result.type is 'broadcast'
+  #       result.type = 'eval'
+  #       result.oldtype = 'broadcast'
+  #     if @options?.hubot? and !@hubot?
+  #       type = @options.hubot
+  #       @hubot = @mediator.linda.tuplespace('waiting_hubot')
+  #       @hubot.write
+  #         baba: "script"
+  #         type: "connect"
+  #         id: @mediator.name
+  #       if type is 'mail'
+  #         result.to = @data.attribute?.mail || "s09704tb@gmail.com"
+  #     report =
+          # baba: 'script'
+          # type: 'report'
+          # value: 'taked'
+          # tuple: result
+  #     @mediator.write report
+  #     @mediator.write result
       # ここで、Babascript Client に流すか
       # 外部サービスを利用した形にするか、決定する
       # 外部サービスならwebhook
@@ -370,85 +247,17 @@ class BabaScriptBase extends EventEmitter
       # result.service = c.api
       # result.key = result.key + "#{Date.now()}"
       # request.post(url).send(result).end (err, res)  ->
-      @mediator.take {cid: result.cid, type: 'return'}, (err, r)=>
-        @returnValue r.data.value, {worker: @mediator.name}
-        if @hubot?
-          @hubot.write {baba: 'script', type: 'disconnect', id: @mediator.name}
-          @hubot = null
-    c.on "cancel_task", (result)->
-      console.log 'mediator cancel'
-      console.log result
-      @mediator.write result
-    return c
-
-class UserEvents extends EventEmitter
-
-class UserAttributeWrapper extends EventEmitter
-  data: []
-  add: (attribute) ->
-    return if !attribute?
-    @data.push attribute
-
-  get: (name) ->
-    for d in @data
-      return d if d.name is name
-    return null
-
-  remove: (name) ->
-    console.log name
-    console.log @data
-    console.log typeof @data
-    for d, i in @data
-      if d?
-        @data.splice i, 1 if d.name is name
-    return null
-
-class UserAttribute extends EventEmitter
-  data: {}
-  isSyncable: false
-  constructor: (@linda) ->
-    super()
-
-  get: (key) ->
-    return if !key?
-    return @data[key]
-
-  __syncStart: (_data) ->
-    return if !_data?
-    @name = _data.username
-    __data = null
-    for key, value of _data.attribute
-      if !@get(key)?
-        @set key, value
-      else
-        __data = {} if !__data?
-        __data[key] = value
-    @isSyncable = true
-    @emit "get_data", @data
-    @ts = @linda.tuplespace(@name)
-    @ts.watch {type: 'userdata'}, (err, result) =>
-      return if err
-      {key, value, username} = result.data
-      if username is @name
-        v = @get key
-        if v isnt value
-          @set key, value, {sync: false}
-          @emit "change_data", @data
-    if __data?
-      for key, value of __data
-        @sync key, value
-      __data = null
-
-  sync: (key, value) =>
-    @ts.write {type: 'update', key: key, value: value}
-
-  set: (key, value, options={sync: false}) ->
-    return if !key? or !value?
-    if options?.sync is true and @isSyncable is true
-      if @get(key) isnt value
-        @sync key, value
-    else
-      @data[key] = value
+  #     @mediator.take {cid: result.cid, type: 'return'}, (err, r)=>
+  #       @returnValue r.data.value, {worker: @mediator.name}
+  #       if @hubot?
+          # @hubot.write
+            # baba: 'script'
+            # type: 'disconnect'
+            # id: @mediator.name
+  #         @hubot = null
+  #   c.on "cancel_task", (result)->
+  #     @mediator.write result
+  #   return c
 
 module.exports = class BabaScript extends BabaScriptBase
 
@@ -457,3 +266,56 @@ module.exports = class BabaScript extends BabaScriptBase
     @__self = mm @, (key, args) =>
       @methodmissing key, args
     return @__self
+
+
+
+  # addMember: (name) =>
+  #   for u in @vclients
+  #     if u.data.username is name
+  #       return
+  #   {host, port} = @linda.io.socket.options
+  #   origin = "#{host}:#{port}"
+  #   request.get("#{origin}/api/user/#{name}").end (err, res) =>
+  #     if res.statusCode is 200
+  #       user = res.body
+
+
+
+  #       @vclients.push @createMediator user
+  #       userAttribute = new UserAttribute @linda
+  #       d =
+  #         username: user.username
+  #         attribute: user.attribute
+  #       userAttribute.__syncStart d
+  #       @membersData.push userAttribute
+  #       @attributes.add userAttribute
+  #       @membernames.push user.username
+  #       request.post("#{host}:#{port}/api/notification")
+  #       .send({users: user.username}).end (err, res) ->
+  #     else
+  #       @vclients.push @createMediator {username: name}
+  #       # console.log @vclients
+  #
+  # removeMember: (name) =>
+  #   console.log "remove member"
+  #   for v, i in @vclients
+  #     if v? and v.mediator.name is name
+  #       v.linda.io.socket.disconnect()
+  #       @vclients.splice i, 1
+  #   @attributes.remove name
+  #   for v, i in @membernames
+  #     if v? and v is name
+  #       @membernames.splice i, 1
+
+
+    # if @tasks.length is 0 and !@isProcessing and @linda.io.socket.connecting
+    #   @humanExec key, args
+    # else
+    #   @tasks.push {key, args}
+    # if @linda.io.socket.connecting?
+    #   if @tasks.length > 0
+    #     @tasks.push {key, args}
+    #   else
+    #     @humanExec(key, args)
+    # else
+    #   @tasks.push {key, args}
