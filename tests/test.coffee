@@ -5,8 +5,6 @@ assert = require "assert"
 Babascript = require path.resolve "./lib/script"
 Client = require "babascript-client"
 _    = require "lodash"
-address = 'http://153.121.44.172:9080'
-# request = require 'supertest'
 
 describe "normal babascript test", ->
 

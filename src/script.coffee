@@ -19,8 +19,7 @@ class BabaScriptBase extends EventEmitter
   @create = (id, options={})->
     return new BabaScript id, options
   @getLinda = (_api)->
-    # api = _api || 'http://linda.babascript.org'
-    api = _api || 'http://localhost:5000'
+    api = _api || 'http://linda.babascript.org'
     socket = SocketIOClient.connect api, {'force new connection': true}
     return new LindaSocketIOClient().connect socket
 
@@ -36,8 +35,7 @@ class BabaScriptBase extends EventEmitter
         id = @callbackId()
       @options.users = [id]
       @id = id
-    # @api = @options?.manager || 'http://linda.babascript.org'
-    @api = @options?.manager || 'http://localhost:5000'
+    @api = @options?.manager || 'http://linda.babascript.org'
     socket = SocketIOClient.connect @api, {'force new connection': true}
     @linda ?= new LindaSocketIOClient().connect socket
     @attributes = new UserAttributeWrapper()
@@ -49,8 +47,7 @@ class BabaScriptBase extends EventEmitter
     @broadcastTasks = []
     @events = new UserEvents()
     EventEmitter.call @events
-    @linda.io.on "connect",=>
-      @connect()
+    @linda.io.on "connect", @connect
     return @
 
   connect: =>
@@ -205,7 +202,6 @@ class BabaScriptBase extends EventEmitter
     else
       callback = ->
     @once "#{cid}_callback", callback
-    # @sts.write tuple
     r = null
     cancelId = ""
     tuple.cancelId = cancelId
