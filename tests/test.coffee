@@ -5,7 +5,7 @@ assert = require "assert"
 Babascript = require path.resolve "./lib/script"
 Client = require "babascript-client"
 _    = require "lodash"
-address = 'http://localhost:9080'
+address = 'http://153.121.44.172:9080'
 # request = require 'supertest'
 
 describe "normal babascript test", ->
@@ -61,16 +61,18 @@ describe "normal babascript test", ->
     space = "baba_multiple_task"
     baba = new Babascript space
     client = new Client space
+    i = 0
     client.on "get_task", (result)->
-      @returnValue true
-    baba.いっこめ {format: "boolean"}, (r)->
-      assert.equal r.value , true
-      baba.にこめ {format: "boolean"}, (r)->
-        assert.equal r.value , true
-        baba.さんこめ {format: "boolean"}, (r)->
-          assert.equal r.value , true
-          baba.よんこめ {format: "boolean"}, (r)->
-            assert.equal r.value , true
+      @returnValue i
+      i += 1
+    baba.いっこめ {format: "int"}, (r)->
+      assert.equal r.value , 0
+      baba.にこめ {format: "int"}, (r)->
+        assert.equal r.value , 1
+        baba.さんこめ {format: "int"}, (r)->
+          assert.equal r.value , 2
+          baba.よんこめ {format: "int"}, (r)->
+            assert.equal r.value , 3
             done()
 
   it "sequential return value", (done)->
@@ -87,7 +89,6 @@ describe "normal babascript test", ->
       clients.push client
     setTimeout ->
       baba.しーくえんしゃる {format: "boolean"}, (result)->
-        # console.log result.worker()
         count += 1
         if count is 10
           if _.uniq(ids).length is 10
@@ -198,14 +199,14 @@ describe "normal babascript test", ->
     space_yamada = "multi_player_v_yamada"
 
     babayamada = new Babascript [space_baba, space_yamada]
-
     clientBaba = new Client space_baba
     clientBaba.on "get_task", ->
       @returnValue false
 
-    clientaYamada = new Client space_yamada
-    clientaYamada.on "get_task", ->
+    clientYamada = new Client space_yamada
+    clientYamada.on "get_task", ->
       @returnValue true
+
     babayamada.multi_player_in_one_variable {format: 'boolean'}, (result) ->
       id = result.getWorker().id
       nextReturnerId = null
@@ -231,12 +232,10 @@ describe "normal babascript test", ->
 
     clientBaba = new Client space_baba
     clientBaba.on "get_task", ->
-      console.log "baba"
       @returnValue 1
 
     clientYamada = new Client space_yamada
     clientYamada.on "get_task", ->
-      console.log "yamada"
       @returnValue 2
 
     members = new Babascript space_baba
@@ -249,7 +248,6 @@ describe "normal babascript test", ->
       members.addMember space_yamada
       members.add_member_broadcast {broadcast: 2}, (results) ->
         assert.equal results.length, 2
-        console.log results
         id1 = results[0].getWorker().id
         v1 = results[0].value
         if id1 is space_baba
@@ -350,8 +348,8 @@ describe "normal babascript test", ->
 # Manager使ったやつのテストも書く
 describe "use babascript-manager", ->
   manager = require path.resolve 'tests', 'managerapp'
-  host = "localhost"
-  port = 5000
+  host = "153.121.44.172"
+  port = 9080
   token = ""
   before (done)->
     # request(manager).post("/api/session/login")
@@ -362,13 +360,13 @@ describe "use babascript-manager", ->
   after (done) ->
     done()
 
-  it "token ok", (done) ->
-      space = "baba_test_name"
-      baba = new Babascript space, {manager: "#{host}:#{port}", token: token}
-      baba.linda.io.once "connect", ->
-        done()
-  it 'team test', (done) ->
-    done()
+  # it "token ok", (done) ->
+  #     space = "baba"
+  #     baba = new Babascript space, {manager: "#{host}:#{port}", token: token}
+  #     baba.linda.io.once "connect", ->
+  #       done()
+  # it 'team test', (done) ->
+  #   done()
   # it "virtual client test", (done) ->
   #
   #   baba = new Babascript "takumibaba", {linda: address, localUsers: ["takumibaba"]}

@@ -19,7 +19,8 @@ class BabaScriptBase extends EventEmitter
   @create = (id, options={})->
     return new BabaScript id, options
   @getLinda = (_api)->
-    api = _api || 'http://linda.babascript.org'
+    # api = _api || 'http://linda.babascript.org'
+    api = _api || 'http://localhost:5000'
     socket = SocketIOClient.connect api, {'force new connection': true}
     return new LindaSocketIOClient().connect socket
 
@@ -35,7 +36,8 @@ class BabaScriptBase extends EventEmitter
         id = @callbackId()
       @options.users = [id]
       @id = id
-    @api = @options?.manager || 'http://linda.babascript.org'
+    # @api = @options?.manager || 'http://linda.babascript.org'
+    @api = @options?.manager || 'http://localhost:5000'
     socket = SocketIOClient.connect @api, {'force new connection': true}
     @linda ?= new LindaSocketIOClient().connect socket
     @attributes = new UserAttributeWrapper()
@@ -47,7 +49,8 @@ class BabaScriptBase extends EventEmitter
     @broadcastTasks = []
     @events = new UserEvents()
     EventEmitter.call @events
-    @linda.io.once "connect", @connect
+    @linda.io.on "connect",=>
+      @connect()
     return @
 
   connect: =>
@@ -128,7 +131,11 @@ class BabaScriptBase extends EventEmitter
   exec: (key, arg, func)->
     args = [arg, func]
     @_do key, args
-    return args
+
+  methodmissing: (key, args)->
+    return sys.inspect @ if key is "inspect"
+    args.callback = args[args.length - 1]
+    @_do key, args
 
   _do: (key, args)->
     args.cid = @callbackId()
@@ -147,9 +154,9 @@ class BabaScriptBase extends EventEmitter
     request.get("#{origin}/api/user/#{name}").end (err, res) =>
       if res.statusCode is 200
         user = res.body
-        console.log '-------'
-        console.log user
-        console.log '-------'
+        # console.log '-------'
+        # console.log user
+        # console.log '-------'
         @vclients.push @createMediator user
         userAttribute = new UserAttribute @linda
         d =
@@ -163,22 +170,20 @@ class BabaScriptBase extends EventEmitter
         .send({users: user.username}).end (err, res) ->
       else
         @vclients.push @createMediator {username: name}
-        console.log @vclients
+        # console.log @vclients
 
   removeMember: (name) =>
+    console.log "remove member"
     for v, i in @vclients
-      if v.mediator.name is name
+      if v? and v.mediator.name is name
         v.linda.io.socket.disconnect()
         @vclients.splice i, 1
     @attributes.remove name
     for v, i in @membernames
-      if v is name
+      if v? and v is name
         @membernames.splice i, 1
 
-  methodmissing: (key, args)->
-    return sys.inspect @ if key is "inspect"
-    args.callback = args[args.length - 1]
-    @_do key, args
+
     # if @tasks.length is 0 and !@isProcessing and @linda.io.socket.connecting
     #   @humanExec key, args
     # else
@@ -203,6 +208,8 @@ class BabaScriptBase extends EventEmitter
     # @sts.write tuple
     r = null
     cancelId = ""
+    tuple.cancelId = cancelId
+    @sts.write tuple
     if tuple.type is "broadcast"
       h = []
       for i in [0..tuple.count]
@@ -220,16 +227,16 @@ class BabaScriptBase extends EventEmitter
         @task = null
     else
       cancelid = @sts.take {type:'cancel', cid: cid}, (err, tuple)=>
+        return err if err
         @emit "#{cid}_callback", tuple
         @isProcessing = true
         @next()
-      cancelId = @waitReturn cid, (tuple)=>
+      @waitReturn cid, (tuple)=>
         @sts.cancel cancelid
         @emit "#{cid}_callback", tuple
         @isProcessing = false
         @next()
-    tuple.cancelId = cancelId
-    @sts.write tuple
+        @task = null
     return cid
 
   createTupleWithOption: (key, cid, option)->
@@ -298,7 +305,7 @@ class BabaScriptBase extends EventEmitter
           @tasks.splice i, 1
 
   waitReturn: (cid, callback)->
-    return @sts.take {baba: "script", type: "return", cid: cid}, (err, tuple)=>
+    @sts.take {baba: "script", type: "return", cid: cid}, (err, tuple)=>
       return callback.call @, {value: "cancel"} if err is "cancel"
       if tuple.value?.error?
         console.log 'this is throw error message'
@@ -392,8 +399,12 @@ class UserAttributeWrapper extends EventEmitter
     return null
 
   remove: (name) ->
+    console.log name
+    console.log @data
+    console.log typeof @data
     for d, i in @data
-      @data.split i, 1 if d.name is name
+      if d?
+        @data.splice i, 1 if d.name is name
     return null
 
 class UserAttribute extends EventEmitter
