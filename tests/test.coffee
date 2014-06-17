@@ -3,7 +3,8 @@ process.env.NODE_ENV = "test"
 path = require "path"
 assert = require "assert"
 Babascript = require path.resolve "./lib/script"
-Client = require "babascript-client"
+Client = require "../../node-babascript-client/lib/client"
+# Client = require "babascript-client"
 _    = require "lodash"
 
 describe "normal babascript test", ->
@@ -23,33 +24,31 @@ describe "normal babascript test", ->
     space = "baba_constructor_event"
     baba = new Babascript space
     client = new Client space
-    client.on "get_task", (result)->
+    client.once "get_task", (result)->
       @returnValue true
-    client.on "cancel_task", (task)->
-      console.log task
+    client.once "cancel_task", (task)->
     baba.引数最後二つはコールバック関数でも良い {format: "boolean"}, (result)->
+      assert.equal result.value, true
       done()
 
   it "baba should implement callback event", (done)->
     space = "baba_add_event"
     baba = new Babascript space
     client = new Client space
-    client.on "get_task", (task)->
-      @returnValue true
-    client.on "cancel_task", (task)->
-      console.log "cancel_task"
+    client.once "get_task", (task)->
+      @returnValue false
+    client.once "cancel_task", (task)->
     baba.くらいあんとにこーるばっくいべんと {format: "boolean"}, (result)->
-      assert.equal result.value, true
+      assert.equal result.value, false
       done()
 
   it "return value should be boolean", (done)->
     space = "baba_boolean"
     baba = new Babascript space
     client = new Client space
-    client.on "get_task", ->
+    client.once "get_task", (result) ->
       @returnValue true
-    client.on "cancel_task", ->
-      console.log cancel
+    client.once "cancel_task", ->
     baba.ぶーりあんをください {format: "boolean"}, (result)->
       assert.equal result.value, true
       assert.equal typeof result.value, typeof true
@@ -81,7 +80,7 @@ describe "normal babascript test", ->
     clients = []
     for i in [0..9]
       client = new Client space
-      client.on "get_task", (result)->
+      client.once "get_task", (result)->
         ids.push @id
         @returnValue true
       clients.push client
@@ -100,7 +99,7 @@ describe "normal babascript test", ->
     name = "baba"
     baba = new Babascript space
     client = new Client space
-    client.on "get_task", ->
+    client.once "get_task", ->
       @returnValue name
     baba.すとりんぐをください {format: "string"}, (result)->
       assert.equal result.value, name
@@ -112,7 +111,7 @@ describe "normal babascript test", ->
     number = 10
     baba = new Babascript space
     client = new Client space
-    client.on "get_task", ->
+    client.once "get_task", ->
       @returnValue number
     baba.なんばーをください {format: "number"}, (result)->
       assert.equal result.value, number
@@ -126,14 +125,14 @@ describe "normal babascript test", ->
     baba = new Babascript space
     for i in [0..num-1]
       c = new Client space
-      c.on "get_task", (result)->
+      c.once "get_task", (result)->
         @returnValue true
       clients.push c
-    setTimeout =>
-      baba.ぶろーどきゃすと {format: "boolean", broadcast: num}, (result)->
-        assert.equal num, result.length
-        done()
-    , 3000
+    # setTimeout =>
+    baba.ぶろーどきゃすと {format: "boolean", broadcast: num}, (result)->
+      assert.equal num, result.length
+      done()
+    # , 3000
 
   it "single result.worker", (done)->
 
@@ -146,7 +145,6 @@ describe "normal babascript test", ->
     baba.りざるとどっとわーかー {format: "boolean"}, (result)->
       assert.notEqual result.getWorker, null
       result.getWorker().つづき {format: "boolean"}, (result)->
-        console.log result
         assert.notEqual result.getWorker, null
         done()
 
@@ -179,11 +177,11 @@ describe "normal babascript test", ->
     yamada = new Babascript space_yamada
 
     clientBaba = new Client space_baba
-    clientBaba.on "get_task", ->
+    clientBaba.once "get_task", ->
       @returnValue "baba"
 
     clientaYamada = new Client space_yamada
-    clientaYamada.on "get_task", ->
+    clientaYamada.once "get_task", ->
       @returnValue "yamada"
 
     baba.ばばさん {format: "string"},(result)=>
@@ -198,11 +196,11 @@ describe "normal babascript test", ->
 
     babayamada = new Babascript [space_baba, space_yamada]
     clientBaba = new Client space_baba
-    clientBaba.on "get_task", ->
+    clientBaba.once "get_task", ->
       @returnValue false
 
     clientYamada = new Client space_yamada
-    clientYamada.on "get_task", ->
+    clientYamada.once "get_task", ->
       @returnValue true
 
     babayamada.multi_player_in_one_variable {format: 'boolean'}, (result) ->
@@ -224,6 +222,19 @@ describe "normal babascript test", ->
         assert.equal result.value, nextReturn
         done()
 
+  it "cancel task", (done) ->
+    space_baba = "cancel_baba"
+    baba = new Babascript space_baba
+    babac = new Client space_baba
+    cid = ""
+    baba.cancel_function_test {}, (result) ->
+      assert.equal result.data.type, 'cancel'
+      assert.equal cid, result.data.cid
+      done()
+    babac.once "get_task", (task) ->
+      cid = task.cid
+      @cancel task.cid
+
   it 'add member', (done) ->
     space_baba = "add_member_baba"
     space_yamada = "add_member_yamada"
@@ -233,7 +244,7 @@ describe "normal babascript test", ->
       @returnValue 1
 
     clientYamada = new Client space_yamada
-    clientYamada.on "get_task", ->
+    clientYamada.once "get_task", ->
       @returnValue 2
 
     members = new Babascript space_baba
@@ -271,17 +282,14 @@ describe "normal babascript test", ->
 
     clientBaba = new Client space_baba
     clientBaba.on "get_task", ->
-      console.log "baba"
       @returnValue 1
 
     clientYamada = new Client space_yamada
     clientYamada.on "get_task", ->
-      console.log "yamada"
       @returnValue 2
 
     clientTanaka = new Client space_tanaka
     clientTanaka.on "get_task", ->
-      console.log "tanaka"
       @returnValue 3
 
     members = new Babascript [space_baba, space_yamada]
@@ -296,7 +304,14 @@ describe "normal babascript test", ->
         assert.fail()
       members.addMember space_tanaka
       members.add_member_broadcast {broadcast: 3}, (results) ->
-        console.log results
+        assert.equal results.length, 3
+        answers = [1,2,3]
+        flag = false
+        for result in results
+          for answer, i in answers
+            if answer is result.value
+              answers.splice i, 1
+        assert.equal answers.length, 0
         done()
 
   it 'remove member', (done) ->
@@ -304,26 +319,23 @@ describe "normal babascript test", ->
     space_yamada = "members_remove_member_yamada"
     space_tanaka = "members_remove_member_tanaka"
 
+    members = new Babascript [space_baba, space_yamada, space_tanaka]
+
     clientBaba = new Client space_baba
-    clientBaba.on "get_task", ->
-      console.log "baba"
+    clientBaba.on "get_task", (task) ->
       @returnValue 1
 
     clientYamada = new Client space_yamada
-    clientYamada.on "get_task", ->
-      console.log "yamada"
+    clientYamada.on "get_task", (task) ->
       @returnValue 2
 
     clientTanaka = new Client space_tanaka
-    clientTanaka.on "get_task", ->
-      console.log "tanaka"
+    clientTanaka.on "get_task", (task) ->
       @returnValue 3
 
-    members = new Babascript [space_baba, space_yamada, space_tanaka]
     members.check_current_member {broadcast: 3}, (results) ->
       assert.equal results.length, 3
       members.removeMember space_tanaka
-      assert.equal members.vclients.length, 2
       members.check_removed_current_member {broadcast: 3, timeout: 3000}, (results) ->
         assert.equal results.length, 2
         id = results[0].getWorker().id
@@ -343,32 +355,39 @@ describe "normal babascript test", ->
         assert.equal results[2], null
         done()
 
-# Manager使ったやつのテストも書く
-describe "use babascript-manager", ->
-  manager = require path.resolve 'tests', 'managerapp'
-  host = "153.121.44.172"
-  port = 9080
-  token = ""
-  before (done)->
-    # request(manager).post("/api/session/login")
-    # .send({username: "baba_test_name", password: "baba_test_pass"})
-    # .end (err, res) ->
-    #   token = res.token
-    done()
-  after (done) ->
-    done()
+  it "set module", (done) ->
+    space_baba = "module_set_baba"
+    baba = new Babascript space_baba
+    i = 1
+    baba.set "test_1",
+      start: (b, next) ->
+        assert.equal i, 1
+        i += 1
+        next()
+    baba.set "test_2",
+      start: (b, next) ->
+        assert.equal i, 2
+        i += 1
+        next()
+    baba.set "test_3",
+      start: (b, next) ->
+        assert.equal i, 3
+        i += 1
+        next()
+    baba.set "test_4",
+      start: (b, next) ->
+        assert.equal i, 4
+        i += 1
+        next()
+    baba.set "test_5",
+      start: (b, next) ->
+        assert.equal i, 5
+        i += 1
+        next()
 
-  # it "token ok", (done) ->
-  #     space = "baba"
-  #     baba = new Babascript space, {manager: "#{host}:#{port}", token: token}
-  #     baba.linda.io.once "connect", ->
-  #       done()
-  # it 'team test', (done) ->
-  #   done()
-  # it "virtual client test", (done) ->
-  #
-  #   baba = new Babascript "takumibaba", {linda: address, localUsers: ["takumibaba"]}
-  #
-  #   baba.進捗どうですか {format: "boolean"}, (result) ->
-  #     console.log result
-  #     done()
+    client = new Client space_baba
+    client.on "get_task", ->
+      @returnValue true
+    baba.モジュールテスト {}, (result) ->
+      assert.equal i, 6
+      done()
