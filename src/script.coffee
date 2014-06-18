@@ -42,9 +42,10 @@ class BabaScriptBase extends EventEmitter
     @execTasks = []
     @broadcastTasks = {}
     @loadingModules = []
-    @loadedModules = {}
+    @modules = {}
     @setFlag = true
-    @event = {}
+    @event = Object.create({})
+    @data = {}
     EventEmitter.call @event
     if @linda.io.socket.open is true
       @connect()
@@ -54,6 +55,9 @@ class BabaScriptBase extends EventEmitter
     return @
 
   connect: =>
+    if Object.keys(@modules).length > 0
+      for name, module of @modules
+        module.body.connect()
     @next()
 
   next: ->
@@ -105,6 +109,9 @@ class BabaScriptBase extends EventEmitter
             @cancel cid
             @broadcastTasks[cid] = null
         setImmediate =>
+          if Object.keys(@modules).length > 0
+            for name, module of @modules
+              module.body.receive results
           @emit "#{cid}_callback", results
           @next()
           @isProcessing = false
@@ -117,15 +124,24 @@ class BabaScriptBase extends EventEmitter
       ts.write tuple
       cancelid = ts.take {type:'cancel', cid: cid}, (err, tuple)=>
         return err if err
+        if Object.keys(@modules).length > 0
+          for name, module of @modules
+            module.body.receive tuple
         @emit "#{cid}_callback", tuple
         @isProcessing = false
         @next()
       @waitReturn ts, cid, (tuple) =>
         ts.cancel cancelid
+        if Object.keys(@modules).length > 0
+          for name, module of @modules
+            module.body.receive tuple
         @emit "#{cid}_callback", tuple
         @isProcessing = false
         @next()
       @sts.push ts
+    if Object.keys(@modules).length > 0
+      for name, module of @modules
+        module.body.send tuple
     @next()
     return cid
 
@@ -176,7 +192,7 @@ class BabaScriptBase extends EventEmitter
         if value?
           result = value
         else
-          result = {value: v}
+          result = {value: value}
         @emit "#{cid}_callback", result
 
   waitReturn: (ts, cid, callback)->
@@ -224,13 +240,12 @@ class BabaScriptBase extends EventEmitter
         @setFlag = false
         mod = @loadingModules.shift()
         name = mod.name
-        mod.body.start @, =>
+        mod.body.load @, =>
           setTimeout =>
-            @loadedModules[name] = mod
+            @modules[name] = mod
             @setFlag = true
             @__set()
           , 100
-
 
 module.exports = class BabaScript extends BabaScriptBase
 
