@@ -360,30 +360,45 @@ describe "normal babascript test", ->
     baba = new Babascript space_baba
     i = 1
     baba.set "test_1",
-      start: (b, next) ->
+      load: (b, next) ->
         assert.equal i, 1
         i += 1
         next()
+      connect: ->
+      send: ->
+      receive: ->
     baba.set "test_2",
-      start: (b, next) ->
+      load: (b, next) ->
         assert.equal i, 2
         i += 1
         next()
+      connect: ->
+      send: ->
+      receive: ->
     baba.set "test_3",
-      start: (b, next) ->
+      load: (b, next) ->
         assert.equal i, 3
         i += 1
         next()
+      connect: ->
+      send: ->
+      receive: ->
     baba.set "test_4",
-      start: (b, next) ->
+      load: (b, next) ->
         assert.equal i, 4
         i += 1
         next()
+      connect: ->
+      send: ->
+      receive: ->
     baba.set "test_5",
-      start: (b, next) ->
+      load: (b, next) ->
         assert.equal i, 5
         i += 1
         next()
+      connect: ->
+      send: ->
+      receive: ->
 
     client = new Client space_baba
     client.on "get_task", ->
