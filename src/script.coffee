@@ -51,13 +51,15 @@ class BabaScriptBase extends EventEmitter
       @connect()
     else
       @linda.io.on "connect", =>
+        console.log 'connect...'
         @connect()
     return @
 
   connect: =>
     if Object.keys(@modules).length > 0
       for name, module of @modules
-        module.body.connect()
+        if module.body.connect?
+          module.body.connect()
     @next()
 
   next: ->
@@ -111,7 +113,8 @@ class BabaScriptBase extends EventEmitter
         setImmediate =>
           if Object.keys(@modules).length > 0
             for name, module of @modules
-              module.body.receive results
+              if module.body.receive?
+                module.body.receive? results
           @emit "#{cid}_callback", results
           @next()
           @isProcessing = false
@@ -126,7 +129,8 @@ class BabaScriptBase extends EventEmitter
         return err if err
         if Object.keys(@modules).length > 0
           for name, module of @modules
-            module.body.receive tuple
+            if module.body.receive?
+              module.body.receive tuple
         @emit "#{cid}_callback", tuple
         @isProcessing = false
         @next()
@@ -134,14 +138,16 @@ class BabaScriptBase extends EventEmitter
         ts.cancel cancelid
         if Object.keys(@modules).length > 0
           for name, module of @modules
-            module.body.receive tuple
+            if module.body.receive?
+              module.body.receive tuple
         @emit "#{cid}_callback", tuple
         @isProcessing = false
         @next()
       @sts.push ts
     if Object.keys(@modules).length > 0
       for name, module of @modules
-        module.body.send tuple
+        if module.body.send?
+          module.body.send tuple
     @next()
     return cid
 
