@@ -39,6 +39,8 @@
     "methodmissing": "0.0.3",
     "moment": "~2.3.0",
     "mongoose": "^3.8.8",
+    "opts": "^1.2.2",
+    "readline": "0.0.3",
     "request": "~2.33.0",
     "socket.io": "^0.9.16",
     "socket.io-client": "~0.9.16",
