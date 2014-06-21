@@ -51,7 +51,6 @@ class BabaScriptBase extends EventEmitter
       @connect()
     else
       @linda.io.on "connect", =>
-        console.log 'connect...'
         @connect()
     return @
 
@@ -168,7 +167,10 @@ class BabaScriptBase extends EventEmitter
     for k, v of option
       switch k
         when "broadcast"
-          tuple.count = v - 1
+          if v is 'all'
+            tuple.count = @getMembers.length - 1
+          else
+            tuple.count = v - 1
           tuple.type = "broadcast"
         when "unicast"
           tuple.type = "unicast"
@@ -225,6 +227,12 @@ class BabaScriptBase extends EventEmitter
 
   callbackId: ->
     return "#{moment().unix()}_#{Math.random(1000000)}"
+
+  getMembers: =>
+    names = []
+    for ts in @sts
+      names.push ts.name
+    return names
 
   addMember: (name) =>
     @sts.push @linda.tuplespace(name)
