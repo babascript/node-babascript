@@ -132,7 +132,6 @@ describe "normal babascript test", ->
     baba.ぶろーどきゃすと {format: "boolean", broadcast: num}, (result)->
       assert.equal num, result.length
       done()
-    # , 3000
 
   it "single result.worker", (done)->
 
