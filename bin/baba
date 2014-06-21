@@ -26,7 +26,5 @@ if e
 else
   filename = process.argv[2]
   filepath = path.resolve filename
-  console.log filename
-  console.log filepath
   spawn('coffee', [[filepath]], {detached: true}).stdout.on "data", (data) ->
     process.exit()
