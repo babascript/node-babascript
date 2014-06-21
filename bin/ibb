@@ -1,0 +1,52 @@
+#! /usr/bin/env coffee
+
+readline = require('readline')
+opts = require 'opts'
+Client = require "babascript-client"
+_ = require 'lodash'
+line = null
+
+name = ""
+opts.parse [
+  {
+    short: 'n'
+    log: 'name'
+    description: 'set interactive baba name'
+    value: true
+  },
+], true
+
+start = (name) ->
+  client = new Client name
+  client.on "get_task", (task) ->
+    line = readline.createInterface process.stdin, process.stdout
+    text = task.key
+    if task.format is 'list'
+      text += " - 次の中から選んでください.\n"
+      for l in task.list
+        text += "- #{l}\n"
+    else
+      text += " -- #{task.format}"
+    text += "\n"
+    line.question text, (v) =>
+      switch task.format.toLowerCase()
+        when "list" 
+          return line.question text, arguments.callee if !_.contains task.list, v
+        when "int", "number"
+          return line.question text, arguments.callee if !_.isNumber parseInt v, 10
+        when "boolean", "bool"
+          vv = v.toLowerCase()
+          if vv is 'true' or vv is 'yes'
+            v = true
+          else if vv is 'false' or vv is 'no'
+            v = false
+          else 
+            return line.question text, arguments.callee
+      @returnValue v
+      line.close()
+
+  client.on "cancel_task", ->
+    line.close() if !line?
+
+name = opts.get "n"
+start name

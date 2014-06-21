@@ -4,12 +4,29 @@ fs = require 'fs'
 path = require 'path'
 vm = require 'vm'
 {spawn} = require 'child_process'
+opts = require 'opts'
 
-filename = process.argv[2]
-filepath = path.resolve filename
 
-spawn('coffee', ['--nodejs', [filepath]]).stdout.on "data", (data) ->
-  console.log data
-# fs.readFile filepath, (err, data) ->
-#   console.log data.toString()
-#   vm.runInNewContext data.toString()
+opts.parse [
+  {
+    short: 'e'
+    long: 'eval'
+    description: 'human exec'
+    value: true
+  }
+], true
+
+e = opts.get 'e'
+if e
+  Baba = require "../lib/script"
+  baba = new Baba 'takumibaba'
+  baba.exec e, {}, (result) ->
+    console.log result
+    process.exit()
+else
+  filename = process.argv[2]
+  filepath = path.resolve filename
+  console.log filename
+  console.log filepath
+  spawn('coffee', [[filepath]], {detached: true}).stdout.on "data", (data) ->
+    process.exit()
