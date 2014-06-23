@@ -5,8 +5,7 @@ request = require 'superagent'
 EventEmitter = require("events").EventEmitter
 LindaSocketIOClient = require("linda-socket.io").Client
 SocketIOClient = require "socket.io-client"
-# Client = require "babascript-client"
-Client = require "../../node-babascript-client/lib/client"
+Client = require "babascript-client"
 moment = require "moment"
 sys = require "sys"
 _ = require "lodash"
@@ -27,7 +26,7 @@ class BabaScriptBase extends EventEmitter
   constructor: (id, @options={})->
     super()
     @api = @options?.manager || 'http://linda.babascript.org'
-    socket = SocketIOClient.connect @api#, {'force new connection': true}
+    socket = SocketIOClient.connect @api
     @linda ?= new LindaSocketIOClient().connect socket
     if _.isArray id
       @id = id.join "::"
