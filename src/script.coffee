@@ -5,7 +5,6 @@ request = require 'superagent'
 EventEmitter = require("events").EventEmitter
 LindaSocketIOClient = require("linda-socket.io").Client
 SocketIOClient = require "socket.io-client"
-Client = require "babascript-client"
 moment = require "moment"
 sys = require "sys"
 _ = require "lodash"
