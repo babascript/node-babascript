@@ -13,14 +13,21 @@ opts.parse [
     long: 'eval'
     description: 'human exec'
     value: true
+  },
+  {
+    long: 'format'
+    description: 'format options'
+    value: true
   }
 ], true
 
 e = opts.get 'e'
 if e
-  Baba = require "../lib/script"
+  format = opts.get 'format'
+  option = if format? then {format: format} else {}
+  Baba = require '../lib/script'
   baba = new Baba 'takumibaba'
-  baba.exec e, {}, (result) ->
+  baba.exec e, [option], (result) ->
     console.log result
     process.exit()
 else

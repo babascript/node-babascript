@@ -15,6 +15,7 @@
   ],
   "devDependencies": {
     "babascript-manager": "*",
+    "babascript-client": "*",
     "body-parser": "^1.3.1",
     "cookie-parser": "^1.1.0",
     "direquire": "0.0.5",
