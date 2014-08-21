@@ -15,8 +15,6 @@ class BabaScriptBase extends EventEmitter
   isProcessing: false
   defaultFormat: 'boolean'
   id: ''
-  @create = (id, options={})->
-    return new BabaScript id, options
   @getLinda = ->
     api = 'http://linda.babascript.org'
     socket = SocketIOClient.connect api, {'force new connection': true}
