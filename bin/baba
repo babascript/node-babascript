@@ -18,15 +18,22 @@ opts.parse [
     long: 'format'
     description: 'format options'
     value: true
+  },{
+    long: 'name'
+    short: 'n'
+    description: 'id'
+    value: true
   }
 ], true
 
 e = opts.get 'e'
+n = opts.get 'n'
 if e
   format = opts.get 'format'
   option = if format? then {format: format} else {}
   Baba = require '../lib/script'
-  baba = new Baba 'takumibaba'
+  name = n || 'takumibaba'
+  baba = new Baba name
   baba.exec e, [option], (result) ->
     console.log result
     process.exit()
