@@ -27,7 +27,8 @@
     "mocha": "*",
     "morgan": "*",
     "passport": "^0.2.0",
-    "passport-local": "^1.0.0"
+    "passport-local": "^1.0.0",
+    "socket.io": "^1.1.0"
   },
   "dependencies": {
     "babascript-linda-adapter": "*",
