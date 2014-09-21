@@ -22,6 +22,7 @@
     "grunt-contrib-watch": "git+https://github.com/gruntjs/grunt-contrib-watch",
     "grunt-notify": "*",
     "grunt-simple-mocha": "*",
+    "linda": "^1.1.6",
     "method-override": "^2.0.2",
     "mocha": "*",
     "morgan": "*",

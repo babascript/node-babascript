@@ -4,12 +4,13 @@ EventEmitter = require('events').EventEmitter
 
 class BabaScript extends EventEmitter
   defaultFormat: 'boolean'
+  @address = ''
 
   constructor: (@id, @options={}) ->
     if @options.adapter?
       @adapter = @options.adapter
     else
-      @adapter = new LindaAdapter()
+      @adapter = new LindaAdapter BabaScriptBase.address
     @adapter.attach @
     @tasks = []
     @loadingPlugins = []

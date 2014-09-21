@@ -8,6 +8,19 @@ _    = require "lodash"
 
 describe "normal babascript test", ->
 
+  before (done) ->
+    app = require('http').createServer (req, res) =>
+      _url = require('url').parse(decodeURI(req.url), true)
+      if _url.pathname is '/'
+        res.writeHead 200
+        res.end 'linda test server'
+    app.listen 13000
+    io = require('socket.io').listen app
+    linda  = require('linda').Server.listen {io: io, server: app}
+    Babascript.address = Client.address = "http://localhost:13000"
+
+    done()
+
   it "valid initialize", (done)->
     baba = new Babascript "baba"
     assert.notEqual baba, null
