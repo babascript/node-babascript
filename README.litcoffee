@@ -2,6 +2,8 @@
 
 * BabaScript は人力処理環境のためのプログラミングライブラリです
 
+[![Travis CI Status Badge](https://travis-ci.org/babascript/node-babascript.png?branch=master)](https://travis-ci.org/babascript/node-babascript)
+
 ## initialize
     
     {Baba} = require "babascript"
