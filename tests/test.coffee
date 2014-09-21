@@ -127,10 +127,11 @@ describe "normal babascript test", ->
       c.once "get_task", (result)->
         @returnValue true
       clients.push c
-    # setTimeout =>
-    baba.ぶろーどきゃすと {format: "boolean", broadcast: num}, (result)->
-      assert.equal num, result.length
-      done()
+    setTimeout =>
+      baba.ぶろーどきゃすと {format: "boolean", broadcast: num}, (result)->
+        assert.equal num, result.length
+        done()
+    , 1000
 
   it "single result.worker", (done)->
 
@@ -141,9 +142,10 @@ describe "normal babascript test", ->
       @returnValue true
 
     baba.りざるとどっとわーかー {format: "boolean"}, (result)->
-      assert.notEqual result.getWorker, null
-      result.getWorker().つづき {format: "boolean"}, (result)->
-        assert.notEqual result.getWorker, null
+      assert.equal result.worker, space
+      worker = new Babascript result.worker
+      worker.つづき {format: "boolean"}, (result)->
+        assert.equal result.worker, space
         done()
 
   it "multi result.worker", (done)->
@@ -159,10 +161,11 @@ describe "normal babascript test", ->
     setTimeout =>
       baba.まるちなりざるとどっとわーかー {format: "boolean", broadcast: num}, (result)->
         r = _.sample result
-        id = r.getWorker().id
-        r.getWorker().てすと {format: "boolean"}, (result) ->
+        id = r.worker
+        worker = new Babascript id
+        worker.てすと {format: "boolean"}, (result) ->
           assert.ok result.value
-          _id = result.getWorker().id
+          _id = result.worker
           assert.equal _id, id
           done()
     , 1000
@@ -188,38 +191,6 @@ describe "normal babascript test", ->
         assert.equal result.value, "yamada"
         done()
 
-  it 'multi player in one variable', (done) ->
-    space_baba = "multi_player_v_baba"
-    space_yamada = "multi_player_v_yamada"
-
-    babayamada = new Babascript [space_baba, space_yamada]
-    clientBaba = new Client space_baba
-    clientBaba.once "get_task", ->
-      @returnValue false
-
-    clientYamada = new Client space_yamada
-    clientYamada.once "get_task", ->
-      @returnValue true
-
-    babayamada.multi_player_in_one_variable {format: 'boolean'}, (result) ->
-      id = result.getWorker().id
-      nextReturnerId = null
-      nextReturne = null
-      if id is space_baba
-        assert.ok !result.value
-        nextReturnerId = space_yamada
-        nextReturn = true
-      else if id is space_yamada
-        assert.ok result.value
-        nextReturnerId = space_baba
-        nextReturn = false
-      else
-        assert.fail()
-      babayamada.multi_player_in_one_variable2 {format: 'boolean'}, (result) ->
-        assert.equal result.getWorker().id, nextReturnerId
-        assert.equal result.value, nextReturn
-        done()
-
   it "cancel task", (done) ->
     space_baba = "cancel_baba"
     baba = new Babascript space_baba
@@ -232,126 +203,6 @@ describe "normal babascript test", ->
     babac.once "get_task", (task) ->
       cid = task.cid
       @cancel task.cid
-
-  it 'add member', (done) ->
-    space_baba = "add_member_baba"
-    space_yamada = "add_member_yamada"
-
-    clientBaba = new Client space_baba
-    clientBaba.on "get_task", ->
-      @returnValue 1
-
-    clientYamada = new Client space_yamada
-    clientYamada.once "get_task", ->
-      @returnValue 2
-
-    members = new Babascript space_baba
-
-    members.add_member_test {}, (result) ->
-      id = result.getWorker().id
-      v = result.value
-      assert.equal id, space_baba
-      assert.equal v, 1
-      members.addMember space_yamada
-      members.add_member_broadcast {broadcast: 2}, (results) ->
-        assert.equal results.length, 2
-        id1 = results[0].getWorker().id
-        v1 = results[0].value
-        if id1 is space_baba
-          assert.equal v, 1
-          nextValue = 2
-          nextId = space_yamada
-        else if id1 is space_yamada
-          assert.equal v, 2
-          nextValue = 1
-          nextId = space_baba
-        else
-          assert.fail()
-        id2 = results[1].getWorker().id
-        v2 = results[1].value
-        assert.equal nextId, id2
-        assert.equal nextValue, v2
-        done()
-
-  it "members add member", (done) ->
-    space_baba = "members_add_member_baba"
-    space_yamada = "members_add_member_yamada"
-    space_tanaka = "members_add_member_tanaka"
-
-    clientBaba = new Client space_baba
-    clientBaba.on "get_task", ->
-      @returnValue 1
-
-    clientYamada = new Client space_yamada
-    clientYamada.on "get_task", ->
-      @returnValue 2
-
-    clientTanaka = new Client space_tanaka
-    clientTanaka.on "get_task", ->
-      @returnValue 3
-
-    members = new Babascript [space_baba, space_yamada]
-    members.add_member {}, (result) ->
-      id = result.getWorker().id
-      v = result.value
-      if id is space_baba
-        assert.equal v, 1
-      else if id is space_yamada
-        assert.equal v, 2
-      else
-        assert.fail()
-      members.addMember space_tanaka
-      members.add_member_broadcast {broadcast: 3}, (results) ->
-        assert.equal results.length, 3
-        answers = [1,2,3]
-        flag = false
-        for result in results
-          for answer, i in answers
-            if answer is result.value
-              answers.splice i, 1
-        assert.equal answers.length, 0
-        done()
-
-  it 'remove member', (done) ->
-    space_baba = "members_remove_member_baba"
-    space_yamada = "members_remove_member_yamada"
-    space_tanaka = "members_remove_member_tanaka"
-
-    members = new Babascript [space_baba, space_yamada, space_tanaka]
-
-    clientBaba = new Client space_baba
-    clientBaba.on "get_task", (task) ->
-      @returnValue 1
-
-    clientYamada = new Client space_yamada
-    clientYamada.on "get_task", (task) ->
-      @returnValue 2
-
-    clientTanaka = new Client space_tanaka
-    clientTanaka.on "get_task", (task) ->
-      @returnValue 3
-
-    members.check_current_member {broadcast: 3}, (results) ->
-      assert.equal results.length, 3
-      members.removeMember space_tanaka
-      members.check_removed_current_member {broadcast: 3, timeout: 3000}, (results) ->
-        assert.equal results.length, 2
-        id = results[0].getWorker().id
-        v = results[0].value
-        if id is space_baba
-          assert.equal v, 1
-          nextid = space_yamada
-          nextv = 2
-        else if id is space_yamada
-          assert.equal v, 2
-          nextid = space_baba
-          nextv = 1
-        else
-          assert.fail()
-        assert.equal results[1].getWorker().id, nextid
-        assert.equal results[1].value, nextv
-        assert.equal results[2], null
-        done()
 
   it "set module", (done) ->
     space_baba = "module_set_baba"
