@@ -80,7 +80,7 @@ describe "normal babascript test", ->
     for i in [0..9]
       client = new Client space
       client.once "get_task", (result)->
-        ids.push @id
+        ids.push @clientId
         @returnValue true
       clients.push client
     setTimeout ->
