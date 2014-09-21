@@ -15,7 +15,6 @@
   ],
   "devDependencies": {
     "babascript-client": "*",
-    "direquire": "0.0.5",
     "grunt": "*",
     "grunt-coffeelint": "git+https://github.com/geta6/grunt-coffeelint",
     "grunt-contrib-coffee": "*",
@@ -23,16 +22,11 @@
     "grunt-notify": "*",
     "grunt-simple-mocha": "*",
     "linda": "^1.1.6",
-    "method-override": "^2.0.2",
     "mocha": "*",
-    "morgan": "*",
-    "passport": "^0.2.0",
-    "passport-local": "^1.0.0",
     "socket.io": "^1.1.0"
   },
   "dependencies": {
     "babascript-linda-adapter": "*",
-    "babascript-client": "*",
     "lodash": "^2.4.1",
     "methodmissing": "0.0.3",
     "opts": "^1.2.2",

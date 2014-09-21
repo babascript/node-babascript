@@ -14,11 +14,11 @@ describe "normal babascript test", ->
       if _url.pathname is '/'
         res.writeHead 200
         res.end 'linda test server'
+    port = process.env.PORT or 13000
     app.listen 13000
     io = require('socket.io').listen app
     linda  = require('linda').Server.listen {io: io, server: app}
-    Babascript.address = Client.address = "http://localhost:13000"
-
+    Babascript.address = Client.address = "http://localhost:#{port}"
     done()
 
   it "valid initialize", (done)->
