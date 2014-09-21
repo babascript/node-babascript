@@ -191,19 +191,6 @@ describe "normal babascript test", ->
         assert.equal result.value, "yamada"
         done()
 
-  it "cancel task", (done) ->
-    space_baba = "cancel_baba"
-    baba = new Babascript space_baba
-    babac = new Client space_baba
-    cid = ""
-    baba.cancel_function_test {}, (result) ->
-      assert.equal result.data.type, 'cancel'
-      assert.equal cid, result.data.cid
-      done()
-    babac.once "get_task", (task) ->
-      cid = task.cid
-      @cancel task.cid
-
   it "set module", (done) ->
     space_baba = "module_set_baba"
     baba = new Babascript space_baba
