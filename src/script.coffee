@@ -1,6 +1,7 @@
 mm = require 'methodmissing'
 LindaAdapter = require 'babascript-linda-adapter'
 EventEmitter = require('events').EventEmitter
+{Promise} = require 'es6-promise'
 
 class BabaScript extends EventEmitter
   defaultFormat: 'boolean'
@@ -35,22 +36,23 @@ class BabaScript extends EventEmitter
     return @exec key, args, callback
 
   exec: (key, args, callback) =>
-    if typeof callback isnt 'function'
-      callback = ->
     cid = @callbackId()
     task =
       key: key
       options: args[0]
-      callback: callback
       cid: cid
     @tasks.push task
     @next()
-    return cid
+    if typeof callback isnt 'function'
+      return new Promise (resolve, reject) =>
+        @once "#{cid}_callback", (data) ->
+          if data.reason? then reject data else resolve data
+    else
+      @once "#{cid}_callback", callback
+      return cid
 
   __exec: (task) =>
-    cid = task.cid
     tuple = @createTuple task
-    @once "#{cid}_callback", task.callback
     taskid = @adapter.send tuple
     for name, plugin of @plugins
       module.body?.send tuple
@@ -75,7 +77,7 @@ class BabaScript extends EventEmitter
       type: 'eval'
       key: task.key
       cid: task.cid
-      format: task.options.format or @defaultFormat
+      format: task.options?.format or @defaultFormat
       at: Date.now()
       options: {}
     return tuple if typeof task.options is 'function'
