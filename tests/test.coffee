@@ -43,6 +43,30 @@ describe "normal babascript test", ->
       assert.equal result.value, true
       done()
 
+  it 'use promise', (done) ->
+    space = "baba_promise"
+    baba = new Babascript space
+    client = new Client space
+    client.once "get_task", (result) ->
+      @returnValue true
+    baba.usePromiseFunction({format: 'boolean'}).then (result) ->
+      assert.equal result.value, true
+      done()
+    .catch (err) ->
+      assert.fail()
+
+  it 'use promise error version', (done) ->
+    space = "baba_promise_error"
+    baba = new Babascript space
+    client = new Client space
+    client.once "get_task", (result) ->
+      @cancel 'error'
+    baba.usePromiseFunctionError({format: 'boolean'}).then (result) ->
+      assert.fail()
+    .catch (err) ->
+      assert.equal err.reason, 'error'
+      done()
+
   it "baba should implement callback event", (done)->
     space = "baba_add_event"
     baba = new Babascript space
