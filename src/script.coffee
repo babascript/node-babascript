@@ -44,9 +44,11 @@ class BabaScript extends EventEmitter
     @tasks.push task
     @next()
     if typeof callback isnt 'function'
-      return new Promise (resolve, reject) =>
+      p = new Promise (resolve, reject) =>
         @once "#{cid}_callback", (data) ->
           if data.reason? then reject data else resolve data
+      p.cid = cid
+      return p
     else
       @once "#{cid}_callback", callback
       return cid
@@ -87,16 +89,14 @@ class BabaScript extends EventEmitter
         tuple.count = value - 1
       else if key is 'timeout'
         setTimeout =>
-          error = new Error 'timeout'
-          @cancel task.cid, error
-          @emit "#{task.cid}_callback", error
+          @cancel task.cid, 'timeout'
         , value
       else
         tuple.options[key] = value
     return tuple
 
   cancel: (cid, error) =>
-    reason = "cancel error" if !error?
+    reason = if !error? then "cancel error" else error
     @adapter.cancel cid, reason
 
   callbackId: ->
