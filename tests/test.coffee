@@ -67,7 +67,7 @@ describe "normal babascript test", ->
       assert.equal err.reason, 'error'
       done()
 
-  it "baba should implement callback event", (done)->
+  it "baba implement callback event", (done)->
     space = "baba_add_event"
     baba = new Babascript space
     client = new Client space
@@ -88,6 +88,38 @@ describe "normal babascript test", ->
     baba.ぶーりあんをください {format: "boolean"}, (result)->
       assert.equal result.value, true
       assert.equal typeof result.value, typeof true
+      done()
+
+  it "cancel task - script side", (done) ->
+    space = "baba_cancel_script"
+    baba = new Babascript space
+    client = new Client space
+    client.once "get_task", (result) ->
+    client.once "cancel_task", ->
+    cid = baba.ぶーりあんをください {format: "boolean"}, (result)->
+      assert.ok !result.value?
+      assert.equal result.reason, 'cancel'
+      done()
+    baba.cancel cid, 'cancel'
+
+  it "cancel task - client side", (done) ->
+    space = "baba_cancel_client"
+    baba = new Babascript space
+    client = new Client space
+    client.once "get_task", (result) ->
+      @cancel 'cancel'
+    client.once "cancel_task", ->
+    baba.ぶーりあんをください {format: "boolean"}, (result)->
+      assert.ok !result.value?
+      assert.equal result.reason, 'cancel'
+      done()
+
+  it "timeout error", (done) ->
+    space = "baba_timeout"
+    baba = new Babascript space
+    baba.check_timeout_error {timeout: 5000}, (result) ->
+      assert.equal result.type, 'cancel'
+      assert.equal result.reason, 'timeout'
       done()
 
   it "should multiple task", (done)->
@@ -169,6 +201,22 @@ describe "normal babascript test", ->
         assert.equal num, result.length
         done()
     , 1000
+
+  # it 'cancel broadcast task', (done) ->
+  #   space = "baba_broadcast"
+  #   num = 10
+  #   clients = []
+  #   baba = new Babascript space
+  #   for i in [0..num-3]
+  #     c = new Client space
+  #     c.once "get_task", (result)->
+  #       @returnValue true
+  #   cid = baba.ぶろーどきゃすと {format: "boolean", broadcast: num}, (result)->
+  #     assert.equal num, result.length
+  #     done()
+  #   setTimeout ->
+  #     baba.cancel cid, 'broadcast cancel'
+  #   , 2000
 
   it "single result.worker", (done)->
 
