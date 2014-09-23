@@ -43,6 +43,16 @@ describe "normal babascript test", ->
       assert.equal result.value, true
       done()
 
+  it 'use exec', (done) ->
+    space = 'baba_exec'
+    baba = new Babascript space
+    client = new Client space
+    client.once "get_task", (result) ->
+      @returnValue true
+    baba.exec "useExecFunc", {format: 'boolean'}, (result) ->
+      assert.equal result.value, true
+      done()
+
   it 'use promise', (done) ->
     space = "baba_promise"
     baba = new Babascript space
@@ -66,6 +76,18 @@ describe "normal babascript test", ->
     .catch (err) ->
       assert.equal err.reason, 'error'
       done()
+
+  it 'use exec and promise', (done) ->
+    space = 'baba_exec_promise'
+    baba = new Babascript space
+    client = new Client space
+    client.once "get_task", (result) ->
+      @returnValue true
+    baba.exec("useExecFunc", {format: 'boolean'}).then (result) ->
+      assert.equal result.value, true
+      done()
+    .catch (err) ->
+      assert.fail()
 
   it "baba implement callback event", (done)->
     space = "baba_add_event"

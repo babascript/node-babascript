@@ -33,13 +33,13 @@ class BabaScript extends EventEmitter
     if key is 'inspect'
       return require('sys').inspect {}, {showHidden: true, depth: 2}
     callback = args[args.length - 1]
-    return @exec key, args, callback
+    return @exec key, args[0], callback
 
   exec: (key, args, callback) =>
     cid = @callbackId()
     task =
       key: key
-      options: args[0]
+      options: args
       cid: cid
     @tasks.push task
     @next()
