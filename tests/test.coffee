@@ -36,7 +36,9 @@ describe "normal babascript test", ->
     space = "baba_constructor_event"
     baba = new Babascript space
     client = new Client space
-    client.once "get_task", (result)->
+    client.once "get_task", (task) ->
+      assert.equal task.key, "引数最後二つはコールバック関数でも良い"
+      assert.equal task.format, 'boolean'
       @returnValue true
     client.once "cancel_task", (task)->
     baba.引数最後二つはコールバック関数でも良い {format: "boolean"}, (result)->
@@ -224,6 +226,7 @@ describe "normal babascript test", ->
         done()
     , 1000
 
+  # TODO 通す 
   # it 'cancel broadcast task', (done) ->
   #   space = "baba_broadcast"
   #   num = 10

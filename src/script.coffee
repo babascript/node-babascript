@@ -1,3 +1,5 @@
+'use strict'
+
 mm = require 'methodmissing'
 LindaAdapter = require 'babascript-linda-adapter'
 EventEmitter = require('events').EventEmitter
