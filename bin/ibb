@@ -2,19 +2,14 @@
 
 readline = require('readline')
 opts = require 'opts'
+program = require 'commander'
 Client = require "babascript-client"
 _ = require 'lodash'
 line = null
 
-name = ""
-opts.parse [
-  {
-    short: 'n'
-    log: 'name'
-    description: 'set interactive baba name'
-    value: true
-  },
-], true
+program.version('0.3.5')
+.option "-n --name <n>", 'set BABA name', "takumibaba"
+.parse process.argv
 
 start = (name) ->
   client = new Client name
@@ -48,5 +43,5 @@ start = (name) ->
   client.on "cancel_task", ->
     line.close() if !line?
 
-name = opts.get "n"
+name = program.name
 start name
