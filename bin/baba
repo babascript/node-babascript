@@ -25,11 +25,11 @@ method = program.eval
 name = program.name
 option = program.option
 
-if method
+if method?
   Baba = require '../lib/script'
   baba = new Baba name
   baba.exec method, option, (result) ->
-    console.log result
+    process.stdout.write result.value.toString()
     process.exit()
 else
   filename = process.argv[2]
