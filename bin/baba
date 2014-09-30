@@ -4,37 +4,27 @@ fs = require 'fs'
 path = require 'path'
 vm = require 'vm'
 {spawn} = require 'child_process'
-opts = require 'opts'
+program = require 'commander'
 
+addOption = (value, options) ->
+  o = value.split "="
+  options[o[0]] = o[1]
+  return options
 
-opts.parse [
-  {
-    short: 'e'
-    long: 'eval'
-    description: 'human exec'
-    value: true
-  },
-  {
-    long: 'format'
-    description: 'format options'
-    value: true
-  },{
-    long: 'name'
-    short: 'n'
-    description: 'id'
-    value: true
-  }
-], true
+program.version '0.3.3'
+.option '-e --eval <n>', 'Human exec method name.'
+.option '-n --name <n>', 'Human id.', "takumibaba"
+.option '-o --option <key>=<value>', 'An optional value, put <key>=<value>', addOption, {}
+.parse process.argv
 
-e = opts.get 'e'
-n = opts.get 'n'
-if e
-  format = opts.get 'format'
-  option = if format? then {format: format} else {}
+method = program.eval
+name = program.name
+option = program.option
+
+if method
   Baba = require '../lib/script'
-  name = n || 'takumibaba'
   baba = new Baba name
-  baba.exec e, [option], (result) ->
+  baba.exec method, option, (result) ->
     console.log result
     process.exit()
 else
