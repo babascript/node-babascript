@@ -8,7 +8,11 @@ program = require 'commander'
 
 addOption = (value, options) ->
   o = value.split "="
-  options[o[0]] = o[1]
+  key = o[0]
+  v = o[1]
+  if v.split(",").length > 1
+    v = v.split(",")
+  options[key] = v
   return options
 
 program.version '0.3.3'

@@ -18,7 +18,8 @@ start = (name) ->
     text = task.key
     if task.format is 'list'
       text += " - 次の中から選んでください.\n"
-      for l in task.list
+      list = task.list or task.options.list
+      for l in list
         text += "- #{l}\n"
     else
       text += " -- #{task.format}"
@@ -26,7 +27,7 @@ start = (name) ->
     line.question text, (v) =>
       switch task.format.toLowerCase()
         when "list" 
-          return line.question text, arguments.callee if !_.contains task.list, v
+          return line.question text, arguments.callee if !_.contains list, v
         when "int", "number"
           return line.question text, arguments.callee if !_.isNumber parseInt v, 10
         when "boolean", "bool"
