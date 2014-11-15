@@ -57,7 +57,6 @@ class BabaScript extends EventEmitter
 
   __exec: (task) =>
     tuple = @createTuple task
-    taskid = @adapter.send tuple
     for name, plugin of @plugins
       module.body?.send tuple
     @adapter.receive tuple, (err, result) =>
@@ -73,15 +72,16 @@ class BabaScript extends EventEmitter
         module.body?.receive data
       @emit "#{cid}_callback", data
       @next()
+    @adapter.send tuple
 
-  createTuple: (task) ->
+  createTuple: (task) =>
     tuple =
       baba: 'script'
       name: @id
       type: 'eval'
       key: task.key
       cid: task.cid
-      format: task.options?.format or @defaultFormat
+      format: task.options?.format or 'boolean'
       at: Date.now()
       options: {}
     return tuple if typeof task.options is 'function'

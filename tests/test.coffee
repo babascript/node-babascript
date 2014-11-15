@@ -9,16 +9,17 @@ _    = require "lodash"
 describe "normal babascript test", ->
 
   before (done) ->
-    app = require('http').createServer (req, res) =>
+    app = require('http').createServer (req, res) ->
       _url = require('url').parse(decodeURI(req.url), true)
       if _url.pathname is '/'
         res.writeHead 200
         res.end 'linda test server'
     port = process.env.PORT or 13000
-    app.listen 13000
+    app.listen port
     io = require('socket.io').listen app
     linda  = require('linda').Server.listen {io: io, server: app}
-    Babascript.address = Client.address = "http://localhost:#{port}"
+    Babascript.address = Client.address = "http://localhost"
+    process.env.PORT = port
     done()
 
   it "valid initialize", (done)->
@@ -226,7 +227,7 @@ describe "normal babascript test", ->
         done()
     , 1000
 
-  # TODO 通す 
+  # TODO 通す
   # it 'cancel broadcast task', (done) ->
   #   space = "baba_broadcast"
   #   num = 10
