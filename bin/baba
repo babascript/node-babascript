@@ -18,16 +18,22 @@ addOption = (value, options) ->
 program.version '0.3.3'
 .option '-e --eval <n>', 'Human exec method name.'
 .option '-n --name <n>', 'Human id.', "takumibaba"
+.option '-p --port <n>', 'port', 80
+.option '--host <n>', 'server address', 'http://babascript-linda.herokuapp.com'
 .option '-o --option <key>=<value>', 'An optional value, put <key>=<value>', addOption, {}
 .parse process.argv
 
 method = program.eval
 name = program.name
 option = program.option
+port = program.port
+host = program.host
 
 if method?
   Baba = require '../lib/script'
-  baba = new Baba name
+  Adapter = require("babascript-linda-adapter")
+  adapter = new Adapter host, {port: port}
+  baba = new Baba name, {adapter: adapter}
   baba.exec method, option, (result) ->
     process.stdout.write result.value.toString()
     process.exit()
