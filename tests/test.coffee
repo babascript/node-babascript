@@ -22,6 +22,21 @@ describe "normal babascript test", ->
     process.env.PORT = port
     done()
 
+  it "sequential return value if one client", (done) ->
+    space = "user/baba/seq/oneclient"
+    baba  = new Babascript space
+    j = 0
+    for i in [0..9]
+      baba.test_sequential_for_one_client {description: i}, (result) ->
+        assert.equal result.value, j
+        j++
+        done() if j is 9
+    setTimeout ->
+      client = new Client space
+      client.on "get_task", (result) ->
+        @returnValue result.options.description
+    , 500
+
   it "valid initialize", (done)->
     baba = new Babascript "baba"
     assert.notEqual baba, null
