@@ -5,6 +5,36 @@ LindaAdapter = require 'babascript-linda-adapter'
 EventEmitter = require('events').EventEmitter
 {Promise} = require 'es6-promise'
 
+class Task
+
+  constructor: (id, key, args) ->
+    @data =
+      baba: 'script'
+      name: id
+      key: key
+      type: 'eval'
+      cid: @createCallbackId()
+      format: 'boolean'
+      at: Date.now()
+      options: {}
+    for k, v of args
+      if k is 'broadcast'
+        @data.type = 'broadcast'
+        @data.count = v - 1
+      else if k is 'timeout'
+        @data.timeout = v
+      else
+        @data.options[k] = v
+
+  get: (key) ->
+    return @data[key]
+
+  toTuple: ->
+    return @data
+
+  createCallbackId: ->
+    return "#{(new Date()/1000)}_#{Math.random(100000)}"
+
 class BabaScript extends EventEmitter
   defaultFormat: 'boolean'
   @address = ''
@@ -38,11 +68,8 @@ class BabaScript extends EventEmitter
     return @exec key, args[0], callback
 
   exec: (key, args, callback) =>
-    cid = @callbackId()
-    task =
-      key: key
-      options: args
-      cid: cid
+    task = new Task @id, key, args
+    cid = task.get 'cid'
     @tasks.push task
     @next()
     if typeof callback isnt 'function'
@@ -56,7 +83,11 @@ class BabaScript extends EventEmitter
       return cid
 
   __exec: (task) =>
-    tuple = @createTuple task
+    tuple = task.toTuple()
+    if tuple.timeout?
+      setTimeout =>
+        @cancel(tuple.cid, 'timeout')
+      , tuple.timeout
     for name, plugin of @plugins
       module.body?.send tuple
     @adapter.receive tuple, (err, result) =>
@@ -74,35 +105,9 @@ class BabaScript extends EventEmitter
       @next()
     @adapter.send tuple
 
-  createTuple: (task) =>
-    tuple =
-      baba: 'script'
-      name: @id
-      type: 'eval'
-      key: task.key
-      cid: task.cid
-      format: task.options?.format or 'boolean'
-      at: Date.now()
-      options: {}
-    return tuple if typeof task.options is 'function'
-    for key, value of task.options
-      if key is 'broadcast'
-        tuple.type = key
-        tuple.count = value - 1
-      else if key is 'timeout'
-        setTimeout =>
-          @cancel task.cid, 'timeout'
-        , value
-      else
-        tuple.options[key] = value
-    return tuple
-
   cancel: (cid, error) =>
     reason = if !error? then "cancel error" else error
     @adapter.cancel cid, reason
-
-  callbackId: ->
-    return "#{(new Date()/1000)}_#{Math.random(100000)}"
 
   set: (name, plugin) =>
     @loadingPlugins.push
