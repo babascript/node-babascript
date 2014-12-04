@@ -4,7 +4,7 @@ path = require "path"
 assert = require "assert"
 Babascript = require path.resolve "./lib/script"
 Client = require "babascript-client"
-_    = require "lodash"
+_ = require 'lodash'
 
 describe "normal babascript test", ->
 

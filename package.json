@@ -21,15 +21,15 @@
     "grunt-contrib-watch": "git+https://github.com/gruntjs/grunt-contrib-watch",
     "grunt-notify": "*",
     "grunt-simple-mocha": "*",
-    "linda": "^1.1.6",
+    "linda": "^1.2.1",
     "mocha": "*",
+    "lodash": "^2.4.1",
     "socket.io": "^1.1.0"
   },
   "dependencies": {
     "babascript-linda-adapter": "*",
     "commander": "^2.3.0",
     "es6-promise": "^1.0.0",
-    "lodash": "^2.4.1",
     "methodmissing": "0.0.3",
     "opts": "^1.2.2",
     "readline": "0.0.3"
