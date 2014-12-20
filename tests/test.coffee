@@ -42,7 +42,7 @@ describe "normal babascript test", ->
       assert.equal task.format, 'boolean'
       @returnValue true
     client.once "cancel_task", (task)->
-    baba.引数最後二つはコールバック関数でも良い {format: "boolean"}, (result)->
+    baba.引数最後二つはコールバック関数でも良い {format: "boolean"}, (err, result)->
       assert.equal result.value, true
       done()
 
@@ -50,9 +50,9 @@ describe "normal babascript test", ->
     space = 'baba_exec'
     baba = new Babascript space
     client = new Client space
-    client.once "get_task", (result) ->
+    client.once "get_task", (task) ->
       @returnValue true
-    baba.exec "useExecFunc", {format: 'boolean'}, (result) ->
+    baba.exec "useExecFunc", {format: 'boolean'}, (err, result) ->
       assert.equal result.value, true
       done()
 
@@ -60,7 +60,7 @@ describe "normal babascript test", ->
     space = "baba_promise"
     baba = new Babascript space
     client = new Client space
-    client.once "get_task", (result) ->
+    client.once "get_task", (task) ->
       @returnValue true
     baba.usePromiseFunction({format: 'boolean'}).then (result) ->
       assert.equal result.value, true
@@ -72,19 +72,19 @@ describe "normal babascript test", ->
     space = "baba_promise_error"
     baba = new Babascript space
     client = new Client space
-    client.once "get_task", (result) ->
+    client.once "get_task", (task) ->
       @cancel 'error'
-    baba.usePromiseFunctionError({format: 'boolean'}).then (result) ->
+    baba.usePromiseFunctionError({format: 'boolean'}).then (err, result) ->
       assert.fail()
     .catch (err) ->
-      assert.equal err.reason, 'error'
+      assert.equal err.message, 'error'
       done()
 
   it 'use exec and promise', (done) ->
     space = 'baba_exec_promise'
     baba = new Babascript space
     client = new Client space
-    client.once "get_task", (result) ->
+    client.once "get_task", (task) ->
       @returnValue true
     baba.exec("useExecFunc", {format: 'boolean'}).then (result) ->
       assert.equal result.value, true
@@ -99,7 +99,7 @@ describe "normal babascript test", ->
     client.once "get_task", (task)->
       @returnValue false
     client.once "cancel_task", (task)->
-    baba.くらいあんとにこーるばっくいべんと {format: "boolean"}, (result)->
+    baba.くらいあんとにこーるばっくいべんと {format: "boolean"}, (err, result) ->
       assert.equal result.value, false
       done()
 
@@ -107,10 +107,10 @@ describe "normal babascript test", ->
     space = "baba_boolean"
     baba = new Babascript space
     client = new Client space
-    client.once "get_task", (result) ->
+    client.once "get_task", (task) ->
       @returnValue true
     client.once "cancel_task", ->
-    baba.ぶーりあんをください {format: "boolean"}, (result)->
+    baba.ぶーりあんをください {format: "boolean"}, (err, result) ->
       assert.equal result.value, true
       assert.equal typeof result.value, typeof true
       done()
@@ -119,32 +119,35 @@ describe "normal babascript test", ->
     space = "baba_cancel_script"
     baba = new Babascript space
     client = new Client space
-    client.once "get_task", (result) ->
+    client.once "get_task", (task) ->
     client.once "cancel_task", ->
-    cid = baba.ぶーりあんをください {format: "boolean"}, (result)->
-      assert.ok !result.value?
-      assert.equal result.reason, 'cancel'
+      console.log 'cancel??'
+    reason = 'script side cancel'
+    cid = baba.ぶーりあんをください {format: "boolean"}, (err, result) ->
+      assert.equal result, null
+      assert.equal err.message, reason
       done()
-    baba.cancel cid, 'cancel'
+    baba.cancel cid, reason
 
   it "cancel task - client side", (done) ->
     space = "baba_cancel_client"
     baba = new Babascript space
     client = new Client space
-    client.once "get_task", (result) ->
-      @cancel 'cancel'
+    reason = 'client side cancel'
+    client.once "get_task", (task) ->
+      @cancel reason
     client.once "cancel_task", ->
-    baba.ぶーりあんをください {format: "boolean"}, (result)->
-      assert.ok !result.value?
-      assert.equal result.reason, 'cancel'
+    baba.ぶーりあんをください {format: "boolean"}, (err, result) ->
+      assert.equal result, null
+      assert.equal err.message, reason
       done()
 
   it "timeout error", (done) ->
     space = "baba_timeout"
     baba = new Babascript space
-    baba.check_timeout_error {timeout: 5000}, (result) ->
-      assert.equal result.type, 'cancel'
-      assert.equal result.reason, 'timeout'
+    reason = 'timeout'
+    baba.check_timeout_error {timeout: 5000}, (err, result) ->
+      assert.equal err.message, reason
       done()
 
   it "should multiple task", (done)->
@@ -152,17 +155,17 @@ describe "normal babascript test", ->
     baba = new Babascript space
     client = new Client space
     i = 0
-    client.on "get_task", (result)->
+    client.on "get_task", (err, result) ->
       @returnValue i
       i += 1
-    baba.いっこめ {format: "int"}, (r)->
-      assert.equal r.value , 0
-      baba.にこめ {format: "int"}, (r)->
-        assert.equal r.value , 1
-        baba.さんこめ {format: "int"}, (r)->
-          assert.equal r.value , 2
-          baba.よんこめ {format: "int"}, (r)->
-            assert.equal r.value , 3
+    baba.いっこめ {format: "int"}, (err, result) ->
+      assert.equal result.value , 0
+      baba.にこめ {format: "int"}, (err, result) ->
+        assert.equal result.value , 1
+        baba.さんこめ {format: "int"}, (err, result) ->
+          assert.equal result.value , 2
+          baba.よんこめ {format: "int"}, (err, result) ->
+            assert.equal result.value , 3
             done()
 
   it "sequential return value", (done)->
@@ -173,12 +176,12 @@ describe "normal babascript test", ->
     clients = []
     for i in [0..9]
       client = new Client space
-      client.once "get_task", (result)->
+      client.once "get_task", (err, result) ->
         ids.push @clientId
         @returnValue true
       clients.push client
     setTimeout ->
-      baba.しーくえんしゃる {format: "boolean"}, (result)->
+      baba.しーくえんしゃる {format: "boolean"}, (err, result) ->
         count += 1
         if count is 10
           if _.uniq(ids).length is 10
@@ -192,14 +195,14 @@ describe "normal babascript test", ->
     baba  = new Babascript space
     j = 0
     for i in [0..9]
-      baba.test_sequential_for_one_client {description: i}, (result) ->
+      baba.test_sequential_for_one_client {description: i}, (err, result) ->
         assert.equal result.value, j
         j++
         done() if j is 9
     setTimeout ->
       client = new Client space
-      client.on "get_task", (result) ->
-        @returnValue result.options.description
+      client.on "get_task", (task) ->
+        @returnValue task.options.description
     , 500
 
   it "return value should be string", (done)->
@@ -209,7 +212,7 @@ describe "normal babascript test", ->
     client = new Client space
     client.once "get_task", ->
       @returnValue name
-    baba.すとりんぐをください {format: "string"}, (result)->
+    baba.すとりんぐをください {format: "string"}, (err, result) ->
       assert.equal result.value, name
       assert.equal typeof result.value, typeof name
       done()
@@ -221,7 +224,7 @@ describe "normal babascript test", ->
     client = new Client space
     client.once "get_task", ->
       @returnValue number
-    baba.なんばーをください {format: "number"}, (result)->
+    baba.なんばーをください {format: "number"}, (err, result) ->
       assert.equal result.value, number
       assert.equal typeof result.value, typeof number
       done()
@@ -233,11 +236,11 @@ describe "normal babascript test", ->
     baba = new Babascript space
     for i in [0..num-1]
       c = new Client space
-      c.once "get_task", (result)->
+      c.once "get_task", (err, result) ->
         @returnValue true
       clients.push c
     setTimeout =>
-      baba.ぶろーどきゃすと {format: "boolean", broadcast: num}, (result)->
+      baba.ぶろーどきゃすと {format: "boolean", broadcast: num}, (err, result) ->
         assert.equal num, result.length
         done()
     , 1000
@@ -250,9 +253,9 @@ describe "normal babascript test", ->
   #   baba = new Babascript space
   #   for i in [0..num-3]
   #     c = new Client space
-  #     c.once "get_task", (result)->
+  #     c.once "get_task", (err, result) ->
   #       @returnValue true
-  #   cid = baba.ぶろーどきゃすと {format: "boolean", broadcast: num}, (result)->
+  #   cid = baba.ぶろーどきゃすと {format: "boolean", broadcast: num}, (err, result) ->
   #     assert.equal num, result.length
   #     done()
   #   setTimeout ->
@@ -267,10 +270,10 @@ describe "normal babascript test", ->
     client.on "get_task", ->
       @returnValue true
 
-    baba.りざるとどっとわーかー {format: "boolean"}, (result)->
+    baba.りざるとどっとわーかー {format: "boolean"}, (err, result) ->
       assert.equal result.worker, space
       worker = new Babascript result.worker
-      worker.つづき {format: "boolean"}, (result)->
+      worker.つづき {format: "boolean"}, (err, result) ->
         assert.equal result.worker, space
         done()
 
@@ -285,11 +288,11 @@ describe "normal babascript test", ->
         @returnValue true
       clients.push c
     setTimeout =>
-      baba.まるちなりざるとどっとわーかー {format: "boolean", broadcast: num}, (result)->
+      baba.まるちなりざるとどっとわーかー {format: "boolean", broadcast: num}, (err, result) ->
         r = _.sample result
         id = r.worker
         worker = new Babascript id
-        worker.てすと {format: "boolean"}, (result) ->
+        worker.てすと {format: "boolean"}, (err, result) ->
           assert.ok result.value
           _id = result.worker
           assert.equal _id, id
@@ -311,9 +314,9 @@ describe "normal babascript test", ->
     clientaYamada.once "get_task", ->
       @returnValue "yamada"
 
-    baba.ばばさん {format: "string"},(result)=>
+    baba.ばばさん {format: "string"},(err, result) =>
       assert.equal result.value, "baba"
-      yamada.やまだくん (result)=>
+      yamada.やまだくん (er, result) =>
         assert.equal result.value, "yamada"
         done()
 
@@ -365,6 +368,6 @@ describe "normal babascript test", ->
     client = new Client space_baba
     client.on "get_task", ->
       @returnValue true
-    baba.モジュールテスト {}, (result) ->
+    baba.モジュールテスト {}, (err, result) ->
       assert.equal i, 6
       done()
