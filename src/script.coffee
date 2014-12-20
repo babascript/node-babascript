@@ -5,10 +5,9 @@ LindaAdapter = require 'babascript-linda-adapter'
 EventEmitter = require('events').EventEmitter
 {Promise} = require 'es6-promise'
 Task = require './task'
+debug = require('debug')('babascript')
 
 class BabaScript extends EventEmitter
-  defaultFormat: 'boolean'
-  @address = ''
 
   constructor: (@id, @options={}) ->
     if @options.adapter?
@@ -45,8 +44,8 @@ class BabaScript extends EventEmitter
     @next()
     if typeof callback isnt 'function'
       p = new Promise (resolve, reject) =>
-        @once "#{cid}_callback", (data) ->
-          if data.reason? then reject data else resolve data
+        @once "#{cid}_callback", (err, data) ->
+          if err? then reject err else resolve data
       p.cid = cid
       return p
     else
@@ -57,7 +56,7 @@ class BabaScript extends EventEmitter
     tuple = task.toTuple()
     if tuple.timeout?
       setTimeout =>
-        @cancel(tuple.cid, 'timeout')
+        @cancel tuple.cid, 'timeout'
       , tuple.timeout
     for name, plugin of @plugins
       module.body?.send tuple
@@ -67,18 +66,26 @@ class BabaScript extends EventEmitter
         cid = result[0].data.cid
         for r in result
           data.push r.data
+      else if result.data.reason?# and !result.data?.value?
+        err = new Error result.data.reason
+        cid = result.data.cid
+        data = null
       else
         cid = result.data.cid
         data = result.data
       for name, plugin of @plugins
         module.body?.receive data
-      @emit "#{cid}_callback", data
+      debug 'koko...?'
+      debug result
+      debug cid
+      @emit "#{cid}_callback", err, data
       @next()
     @adapter.send tuple
 
   cancel: (cid, error) =>
-    reason = if !error? then "cancel error" else error
+    reason = if !error? then "cancel" else error
     @adapter.cancel cid, reason
+    @emit "#{cid}_callback", new Error reason, null
 
   set: (name, plugin) =>
     @loadingPlugins.push
