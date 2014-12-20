@@ -5,13 +5,13 @@
 [![Travis CI Status Badge](https://travis-ci.org/babascript/node-babascript.png?branch=master)](https://travis-ci.org/babascript/node-babascript)
 
 ## initialize
-    
+
     {Baba} = require "babascript"
     baba = new Baba.Script "baba"
 
 ## baba.methodName(args={}, callback)
- 
-    baba.進捗どうですか {}, (result)->
+
+    baba.進捗どうですか {}, (err, result)->
       console.log result
 
 * methodName 部分が命令としてワーカーに通知される
@@ -19,7 +19,7 @@
 
 ## baba.methodName({format: "boolean"}, callback)
 
-    baba.進捗どうですか {format: "boolean"}, (result)->
+    baba.進捗どうですか {format: "boolean"}, (err, result)->
       console.log result
 
 * 返り値の型を指定する
@@ -27,7 +27,7 @@
 
 ## baba.methodName({timeout: num}, callback)
 
-    baba.進捗どうですか {timeout: 100}, (result)->
+    baba.進捗どうですか {timeout: 100}, (err, result)->
       console.log result
 
 * timeout は、時間に応じて命令をキャンセルする
@@ -35,33 +35,33 @@
 
 ## baba.methodName({time: "cron-like-option"},callback)
 
-    baba.進捗どうですか {time: "* * * * 10"}, (result)->
+    baba.進捗どうですか {time: "* * * * 10"}, (err, result)->
       console.log result
 
 # time の value にcron-likeな記法で時間を指定してあげると、その時間にこのメソッドが実行される
 
 ## baba.methodName({broadcast: num}, callback)
 
-    baba.進捗どうですか {broadcast: 3}, (result)->
+    baba.進捗どうですか {broadcast: 3}, (err, result)->
       console.log result
 
 * broadcast は、全babaに対して命令を送る
 * numで指定された数だけ値が返ってきたらcallbackが実行される
 
 ## callback(result, human(people?))
-  
-    baba.進捗どうですか {}, (result)->
+
+    baba.進捗どうですか {}, (err, result)->
       value = result.value
       worker = result.worker
       console.log value, worker
       if value
-        worker.進捗もっと {}, (result)->
+        worker.進捗もっと {}, (err, result)->
           console.log result.value
       else
-        worker.なんで進捗ないんですか {format: "string"}, (result)->
+        worker.なんで進捗ないんですか {format: "string"}, (err, result)->
           console.log result.value
 
-* 返り値: result.value 
+* 返り値: result.value
 * 返した人: result.worker(Person Object)
 * result.worker.methodName で、返した人にまた命令を送れる
 
