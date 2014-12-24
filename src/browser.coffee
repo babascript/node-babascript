@@ -17,7 +17,7 @@ proxyFunc = (target, callback) ->
       target[name] = val
       return target
 
-module.exports = class BrowserBabaScript extends BabaScript
+window.BabaScript = module.exports = class BrowserBabaScript extends BabaScript
   constructor: (id, option) ->
     super id, option
     return proxyFunc @, (key, args) =>
