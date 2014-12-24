@@ -1,19 +1,19 @@
 'use strict'
 
-mm = require 'methodmissing'
 LindaAdapter = require 'babascript-linda-adapter'
 EventEmitter = require('events').EventEmitter
 {Promise} = require 'es6-promise'
 Task = require './task'
 debug = require('debug')('babascript')
 
-class BabaScript extends EventEmitter
+module.exports = class BabaScript extends EventEmitter
+  @address = 'http://babascript-linda.herokuapp.com'
 
-  constructor: (@id, @options={}) ->
+  constructor: (@id='noname', @options={}) ->
     if @options.adapter?
       @adapter = @options.adapter
     else
-      @adapter = new LindaAdapter BabaScriptBase.address
+      @adapter = new LindaAdapter @address, {port: 80}
     @adapter.attach @
     @tasks = []
     @loadingPlugins = []
@@ -75,9 +75,6 @@ class BabaScript extends EventEmitter
         data = result.data
       for name, plugin of @plugins
         module.body?.receive data
-      debug 'koko...?'
-      debug result
-      debug cid
       @emit "#{cid}_callback", err, data
       @next()
     @adapter.send tuple
@@ -100,10 +97,3 @@ class BabaScript extends EventEmitter
     plugin.body.load @, =>
       @plugins[name] = plugin
       @__set()
-
-module.exports = class BabaScriptBase extends BabaScript
-  constructor: (id, options) ->
-    super id, options
-    @__self = mm @, (key, args) =>
-      @methodMissing key, args
-    return @__self
