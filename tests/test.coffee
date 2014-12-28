@@ -156,7 +156,6 @@ describe "normal babascript test", ->
     client = new Client space, {adapter: getAdapter()}
     client.once "get_task", (task) ->
     client.once "cancel_task", ->
-      console.log 'cancel??'
     reason = 'script side cancel'
     cid = baba.ぶーりあんをください {format: "boolean"}, (err, result) ->
       assert.equal result, null
