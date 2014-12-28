@@ -1,8 +1,8 @@
 {
   "name": "babascript",
-  "version": "0.3.8",
+  "version": "0.4.0",
   "description": "BabaScript for node",
-  "main": "./lib/script.js",
+  "main": "./lib/index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/babascript/node-babascript"
@@ -25,7 +25,13 @@
     "linda": "^1.2.1",
     "lodash": "^2.4.1",
     "mocha": "*",
-    "socket.io": "^1.1.0"
+    "socket.io": "^1.1.0",
+    "gulp": "^3.8.10",
+    "gulp-coffeelint": "^0.4.0",
+    "gulp-webpack": "^1.1.2",
+    "coffee-script": "^1.8.0",
+    "gulp-util": "^3.0.1",
+    "gulp-mocha": "^2.0.0"
   },
   "dependencies": {
     "babascript-linda-adapter": "*",
@@ -33,7 +39,8 @@
     "es6-promise": "^1.0.0",
     "methodmissing": "0.0.3",
     "opts": "^1.2.2",
-    "readline": "0.0.3"
+    "readline": "0.0.3",
+    "harmony-reflect": "^1.1.1"
   },
   "author": "Takumi Baba",
   "license": "MIT"

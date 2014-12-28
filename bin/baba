@@ -34,7 +34,7 @@ if method?
   Adapter = require("babascript-linda-adapter")
   adapter = new Adapter host, {port: port}
   baba = new Baba name, {adapter: adapter}
-  baba.exec method, option, (result) ->
+  baba.exec method, option, (err, result) ->
     process.stdout.write result.value.toString()
     process.exit()
 else

@@ -7,7 +7,7 @@ module.exports = class Task
       key: key
       type: 'eval'
       cid: @createCallbackId()
-      format: args.format or 'boolean'
+      format: args?.format or 'boolean'
       at: Date.now()
       options: {}
     for k, v of args
