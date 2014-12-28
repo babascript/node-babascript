@@ -4,7 +4,6 @@ LindaAdapter = require 'babascript-linda-adapter'
 EventEmitter = require('events').EventEmitter
 {Promise} = require 'es6-promise'
 Task = require './task'
-debug = require('debug')('babascript')
 
 module.exports = class BabaScript extends EventEmitter
   @address = 'http://babascript-linda.herokuapp.com'
