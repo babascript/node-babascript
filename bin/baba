@@ -30,13 +30,18 @@ port = program.port
 host = program.host
 
 if method?
-  Baba = require '../lib/script'
+  Baba = require '../lib/index'
+  console.log new Baba
   Adapter = require("babascript-linda-adapter")
   adapter = new Adapter host, {port: port}
   baba = new Baba name, {adapter: adapter}
-  baba.exec method, option, (err, result) ->
+  baba.exec(method, option).then (result) ->
     process.stdout.write result.value.toString()
     process.exit()
+  .catch (err) ->
+    process.stderror.write err
+  # baba.exec method, option, (err, result) ->
+
 else
   filename = process.argv[2]
   filepath = path.resolve filename
