@@ -7,6 +7,62 @@ Adapter = require 'babascript-linda-adapter'
 Client = require "babascript-client"
 _ = require 'lodash'
 
+
+describe 'plugin test', ->
+
+  it "set module", (done) ->
+    space_baba = "module_set_baba"
+    baba = new Babascript space_baba
+    i = 1
+    baba.plugins.set "test_1",
+      load: (b, next) ->
+        assert.equal i, 1
+        i += 1
+        next()
+      connect: ->
+      send: ->
+      receive: ->
+    baba.plugins.set "test_2",
+      load: (b, next) ->
+        assert.equal i, 2
+        i += 1
+        next()
+      connect: ->
+      send: ->
+      receive: ->
+    baba.plugins.set "test_3",
+      load: (b, next) ->
+        assert.equal i, 3
+        i += 1
+        next()
+      connect: ->
+      send: ->
+      receive: ->
+    baba.plugins.set "test_4",
+      load: (b, next) ->
+        assert.equal i, 4
+        i += 1
+        next()
+      connect: ->
+      send: ->
+      receive: ->
+    baba.plugins.set "test_5",
+      load: (b, next) ->
+        assert.equal i, 5
+        i += 1
+        next()
+      connect: ->
+      send: ->
+      receive: ->
+
+    client = new Client space_baba
+    client.on "get_task", ->
+      @returnValue true
+    baba.モジュールテスト {}, (err, result) ->
+      assert.equal i, 6
+      done()
+
+
 describe "normal babascript test", ->
 
   scriptAdapter = null
@@ -353,55 +409,3 @@ describe "normal babascript test", ->
       yamada.やまだくん (er, result) =>
         assert.equal result.value, "yamada"
         done()
-
-  it "set module", (done) ->
-    space_baba = "module_set_baba"
-    baba = new Babascript space_baba, {adapter: getAdapter()}
-    i = 1
-    baba.set "test_1",
-      load: (b, next) ->
-        assert.equal i, 1
-        i += 1
-        next()
-      connect: ->
-      send: ->
-      receive: ->
-    baba.set "test_2",
-      load: (b, next) ->
-        assert.equal i, 2
-        i += 1
-        next()
-      connect: ->
-      send: ->
-      receive: ->
-    baba.set "test_3",
-      load: (b, next) ->
-        assert.equal i, 3
-        i += 1
-        next()
-      connect: ->
-      send: ->
-      receive: ->
-    baba.set "test_4",
-      load: (b, next) ->
-        assert.equal i, 4
-        i += 1
-        next()
-      connect: ->
-      send: ->
-      receive: ->
-    baba.set "test_5",
-      load: (b, next) ->
-        assert.equal i, 5
-        i += 1
-        next()
-      connect: ->
-      send: ->
-      receive: ->
-
-    client = new Client space_baba, {adapter: getAdapter()}
-    client.on "get_task", ->
-      @returnValue true
-    baba.モジュールテスト {}, (err, result) ->
-      assert.equal i, 6
-      done()
