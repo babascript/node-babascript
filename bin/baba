@@ -38,8 +38,7 @@ if method?
     process.stdout.write JSON.stringify result.value
     process.exit()
   .catch (error) ->
-    console.log 'error...'
-    process.stdout.write JSON.stringify error
+    process.stdout.write JSON.stringify error.message
     process.exit()
 
 else
