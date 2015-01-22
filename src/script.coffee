@@ -4,6 +4,7 @@ LindaAdapter = require 'babascript-linda-adapter'
 EventEmitter = require('events').EventEmitter
 {Promise} = require 'es6-promise'
 Task = require './task'
+Plugins = require './plugin'
 
 module.exports = class BabaScript extends EventEmitter
   @address = 'http://babascript-linda.herokuapp.com'
@@ -15,14 +16,12 @@ module.exports = class BabaScript extends EventEmitter
       @adapter = new LindaAdapter @address, {port: 80}
     @adapter.attach @
     @tasks = []
-    @loadingPlugins = []
-    @plugins = {}
+    @plugins = new Plugins()
     @data = {}
     @on "connect", @connect
 
   connect: ->
-    for name, plugin of @plugins
-      plugin.body?.connect()
+    @plugins.connect()
     @next()
 
   next: ->
@@ -57,8 +56,7 @@ module.exports = class BabaScript extends EventEmitter
       setTimeout =>
         @cancel tuple.cid, 'timeout'
       , tuple.timeout
-    for name, plugin of @plugins
-      module.body?.send tuple
+    @plugins.send()
     @adapter.receive tuple, (err, result) =>
       if Array.isArray result
         data = []
@@ -72,27 +70,20 @@ module.exports = class BabaScript extends EventEmitter
       else
         cid = result.data.cid
         data = result.data
-      for name, plugin of @plugins
-        module.body?.receive data
+      @plugins.receive()
       @emit "#{cid}_callback", err, data
       @next()
     @adapter.send tuple
 
-  cancel: (cid, error) =>
-    reason = if !error? then "cancel" else error
-    @adapter.cancel cid, reason
-    @emit "#{cid}_callback", new Error reason, null
+  cancel: (cid, reason) =>
+    if reason instanceof Error
+      error = reason
+    else
+      error = new Error reason
+    @adapter.cancel cid, error
+    @emit "#{cid}_callback", error, null
 
-  set: (name, plugin) =>
-    @loadingPlugins.push
-      name: name
-      body: plugin
-    @__set()
-
-  __set: =>
-    return @next() if @loadingPlugins.length is 0
-    plugin = @loadingPlugins.shift()
-    name = plugin.name
-    plugin.body.load @, =>
-      @plugins[name] = plugin
-      @__set()
+  set: (name, plugin) ->
+    console.log 'set'
+    console.log @
+    @plugins.set name, plugin
