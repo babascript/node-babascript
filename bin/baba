@@ -34,9 +34,14 @@ if method?
   Adapter = require("babascript-linda-adapter")
   adapter = new Adapter host, {port: port}
   baba = new Baba name, {adapter: adapter}
-  baba.exec method, option, (err, result) ->
-    process.stdout.write result.value.toString()
+  baba.exec(method, option).then (result) ->
+    process.stdout.write JSON.stringify result.value
     process.exit()
+  .catch (error) ->
+    console.log 'error...'
+    process.stdout.write JSON.stringify error
+    process.exit()
+
 else
   filename = process.argv[2]
   filepath = path.resolve filename
